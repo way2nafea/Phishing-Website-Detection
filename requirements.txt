@@ -1,0 +1,16 @@
+numpy
+pandas
+scikit-learn
+matplotlib
+seaborn
+requests
+beautifulsoup4
+lxml
+tldextract
+urllib3
+joblib
+flask
+gunicorn
+python-whois
+python-dateutil
+google
