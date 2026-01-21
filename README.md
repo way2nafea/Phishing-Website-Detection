@@ -32,22 +32,25 @@ The **Phishing Website Detection System** is a machine learning–based web appl
 
 ---
 
-## 📁 Project Structure
 Phishing-Website-Detection/
 │
-├── app.py # Flask application
-├── feature.py # Feature extraction logic
-├── train_model.py # Model training script
-├── phishing.csv # Dataset
-├── requirements.txt # Project dependencies
+├── app.py                  # Flask web application (main entry point)
+├── feature.py              # URL feature extraction logic
+├── train_model.py          # Model training script
+├── phishing.csv            # Dataset containing phishing & legitimate URLs
+├── requirements.txt        # Project dependencies
+├── .gitignore              # Git ignored files
+├── README.md               # Project documentation
+│
 ├── pickle/
-│ └── model.pkl # Trained ML model
+│   └── model.pkl           # Trained machine learning model
+│
 ├── templates/
-│ └── index.html # Frontend HTML
-├── static/
-│ └── style.css # CSS styling
-├── .gitignore
-└── README.md
+│   └── index.html          # Frontend HTML (Flask template)
+│
+└── static/
+    └── style.css           # CSS styling
+
 
 
 
