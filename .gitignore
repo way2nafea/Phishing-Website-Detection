@@ -7,8 +7,6 @@ venv/
 .venv/
 env/
 
-# ML models
-pickle/
 
 # OS files
 .DS_Store
