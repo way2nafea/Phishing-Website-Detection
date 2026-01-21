@@ -65,7 +65,10 @@ Phishing-Website-Detection/
 
 ---
 
-## 🛠️ Installation & Setup (Local)
+---
+
+## 🛠 Installation & Setup (Local)
+
 ```bash
 git clone https://github.com/way2nafea/Phishing-Website-Detection.git
 cd Phishing-Website-Detection
