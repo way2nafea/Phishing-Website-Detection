@@ -1,46 +1,58 @@
-# Phishing Website Detection System
+🛡️ Phishing Website Detection System
 
-## 📌 Overview
-The **Phishing Website Detection System** is a machine learning–based web application designed to identify and classify phishing websites using URL and website-based features. The system helps users determine whether a given website URL is **legitimate or phishing**, improving online security and awareness.
+A machine learning–based web application that detects phishing websites using URL-based features.
+The system analyzes a user-provided URL and predicts whether it is phishing or legitimate using a trained ML model, deployed with a Flask web interface.
 
----
+📌 Project Overview
 
-## 🎯 Objectives
-- Detect phishing websites using machine learning techniques  
-- Analyze URL-based and website-related features  
-- Provide a simple web interface for real-time URL checking  
-- Reduce the risk of phishing attacks and fraudulent websites  
+Phishing attacks are a major cybersecurity threat where attackers trick users into revealing sensitive information via fake websites.
+This project helps identify such malicious URLs by applying machine learning techniques on extracted URL features.
 
----
+✨ Features
 
-## 🧠 Technology Stack
-- **Programming Language:** Python  
-- **Framework:** Flask  
-- **Machine Learning:** Scikit-learn  
-- **Frontend:** HTML, CSS  
-- **Backend:** Flask (Python)  
-- **Deployment:** Render  
-- **Version Control:** Git & GitHub  
+Detects phishing and legitimate websites using URL analysis
 
----
+Machine learning–based prediction model
 
-## ⚙️ System Architecture
-1. User enters a website URL  
-2. URL features are extracted using predefined rules  
-3. Trained ML model predicts whether the website is phishing or legitimate  
-4. Result is displayed on the web interface  
+Simple and user-friendly web interface
 
----
+Real-time URL classification
 
-## 📁 Project Structure
+Deployed on a live server (Render)
 
-```text
+🧠 Technology Stack
+
+Programming Language: Python
+
+Web Framework: Flask
+
+Machine Learning: Scikit-learn
+
+Frontend: HTML, CSS
+
+Deployment: Render
+
+Version Control: Git & GitHub
+
+⚙️ System Architecture
+
+User enters a website URL
+
+URL features are extracted using predefined rules
+
+Trained ML model analyzes the features
+
+Website is classified as Phishing or Legitimate
+
+Result is displayed on the web interface
+
+📁 Project Structure
 Phishing-Website-Detection/
 │
 ├── app.py                  # Flask web application (main entry point)
 ├── feature.py              # URL feature extraction logic
-├── train_model.py          # Model training script
-├── phishing.csv            # Dataset (phishing & legitimate URLs)
+├── train_model.py          # Machine learning model training script
+├── phishing.csv             # Dataset (phishing & legitimate URLs)
 ├── requirements.txt        # Project dependencies
 ├── .gitignore              # Git ignored files
 ├── README.md               # Project documentation
@@ -54,61 +66,97 @@ Phishing-Website-Detection/
 └── static/
     └── style.css           # CSS styling
 
+⚙️ Installation & Setup (Local)
+🔹 Prerequisites
 
----
+Python 3.8 or above
 
-## 🚀 How It Works
-- The model is trained using a dataset containing phishing and legitimate URLs.
-- Features such as URL length, presence of special characters, domain age, and HTTPS usage are extracted.
-- A machine learning classifier predicts the nature of the URL.
-- The Flask web app provides an interface to test URLs in real time.
+Git
 
----
+pip (Python package manager)
 
----
-
-## 🛠 Installation & Setup (Local)
-
-```bash
+🔹 Step-by-Step Installation
+# 1. Clone the repository
 git clone https://github.com/way2nafea/Phishing-Website-Detection.git
+
+# 2. Navigate to project directory
 cd Phishing-Website-Detection
+
+# 3. Install required dependencies
 pip install -r requirements.txt
+
+# 4. Run the Flask application
 python app.py
-Open browser and visit:
+
+🔹 Access the Application
+
+Open your browser and visit:
 
 http://127.0.0.1:5000/
+
 🌐 Live Deployment
-The application is deployed on Render and accessible online:
+
+The application is deployed on Render and is accessible online:
 
 🔗 Live URL:
 https://phishing-website-detection-gfss.onrender.com
 
-Note: Free Render instances may take a few seconds to start due to inactivity.
+⚠️ Note: Free Render instances may take a few seconds to start after inactivity.
+
+🧪 Dataset Information
+
+The dataset (phishing.csv) contains URLs labeled as:
+
+1 → Phishing
+
+0 → Legitimate
+
+Used to train the machine learning classification model
+
+🤖 Machine Learning Model
+
+Feature extraction is based on URL characteristics such as:
+
+URL length
+
+Special characters
+
+Domain information
+
+HTTPS usage
+
+Model used: Gradient Boosting Classifier
+
+Trained model is stored as model.pkl
 
 👥 Team Contributions
-This project was developed as a team project.
-All team members contributed through GitHub collaboration and commits.
 
-📊 Use Cases
+This project was developed as a team-based mini project.
+
+All team members contributed through GitHub collaboration
+
+Contributions include coding, testing, documentation, and deployment
+
+📌 Use Cases
+
 Educational demonstration of phishing detection
 
 Cybersecurity awareness projects
 
-Academic mini-project or experiment
+Academic mini project for engineering students
 
-URL risk analysis tool
+Example of ML + Flask integration
 
 🔮 Future Enhancements
-Improve accuracy using advanced ML/DL models
 
-Add real-time WHOIS and DNS analysis
+Improve accuracy with advanced models
 
-Browser extension integration
+Add browser extension support
 
-Multi-language support
+Integrate real-time threat intelligence APIs
+
+Enhance UI/UX design
 
 📜 License
-This project is developed for academic and educational purposes.
 
-✅ Conclusion
-The Phishing Website Detection System demonstrates the effective use of machine learning in cybersecurity applications. It provides a simple yet powerful approach to identifying malicious websites and promoting safer internet usage.
+This project is developed for educational purposes only.
