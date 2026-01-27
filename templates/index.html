@@ -21,7 +21,7 @@
 <div class="container">
     <div class="row align-items-center">
 
-        <!-- FORM SECTION -->
+        <!-- ================= FORM SECTION ================= -->
         <div class="col-md-6">
             <h2 class="mb-4 text-center">
                 WEBSITE PHISHING URL DETECTION
@@ -48,7 +48,7 @@
             </form>
         </div>
 
-        <!-- RESULT SECTION -->
+        <!-- ================= RESULT SECTION ================= -->
         <div class="col-md-6 mt-4 text-center">
 
             {% if url and prediction %}
@@ -56,27 +56,43 @@
                 <p><strong>Entered URL:</strong><br>{{ url }}</p>
 
                 {% if xx == 1 %}
-                    <!-- SAFE -->
+                    <!-- ✅ SAFE -->
                     <h3 class="confidence safe">
                         {{ prediction }}
                     </h3>
 
                     <a href="{{ url }}"
                        target="_blank"
+                       rel="noopener noreferrer"
                        class="button1 mt-3 d-inline-block">
                         Continue
                     </a>
 
+                {% elif xx == 0 %}
+                    <!-- ⚠️ SUSPICIOUS -->
+                    <h3 class="confidence warning">
+                        {{ prediction }}
+                    </h3>
+
+                    <a href="{{ url }}"
+                       target="_blank"
+                       rel="noopener noreferrer"
+                       class="button2 mt-3 d-inline-block"
+                       onclick="return confirm('This website looks suspicious. Do you still want to continue?');">
+                        Continue with Caution
+                    </a>
+
                 {% elif xx == -1 %}
-                    <!-- PHISHING / SUSPICIOUS -->
+                    <!-- 🚨 PHISHING -->
                     <h3 class="confidence phishing">
                         {{ prediction }}
                     </h3>
 
                     <a href="{{ url }}"
                        target="_blank"
+                       rel="noopener noreferrer"
                        class="button2 mt-3 d-inline-block"
-                       onclick="return confirm('Warning! This website may be phishing. Do you still want to continue?');">
+                       onclick="return confirm('WARNING! This website is likely phishing. Do you still want to continue?');">
                         Still want to continue
                     </a>
                 {% endif %}

@@ -32,10 +32,10 @@ TRUSTED_DOMAINS = {
 }
 
 # ---------------------------------
-# HELPER FUNCTION TO EXTRACT DOMAIN
+# HELPER FUNCTION: EXTRACT DOMAIN
 # ---------------------------------
 def get_domain(url):
-    if not url.startswith("http"):
+    if not url.startswith(("http://", "https://")):
         url = "http://" + url
     parsed = urlparse(url)
     return parsed.netloc.lower()
@@ -46,51 +46,61 @@ def get_domain(url):
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        url = request.form["url"]
+        url = request.form.get("url")
         domain = get_domain(url)
 
-        # ✅ LEVEL 0: WHITELIST CHECK
+        # =============================
+        # LEVEL 0: WHITELIST CHECK
+        # =============================
         if domain in TRUSTED_DOMAINS:
             confidence = 99.0
-            pred = f"Website appears SAFE ({confidence:.2f}% confidence)"
+            prediction = f"Website appears SAFE ({confidence:.2f}% confidence)"
             xx = 1
 
         else:
-            # 🔍 FEATURE EXTRACTION
-            obj = FeatureExtraction(url)
-            x = np.array(obj.getFeaturesList()).reshape(1, 30)
+            # =============================
+            # FEATURE EXTRACTION
+            # =============================
+            extractor = FeatureExtraction(url)
+            features = np.array(extractor.getFeaturesList()).reshape(1, 30)
 
-            # 🤖 MODEL PREDICTION
-            proba = gbc.predict_proba(x)[0]
-            phishing_prob = proba[0] * 100
-            legit_prob = proba[1] * 100
+            # =============================
+            # MODEL PREDICTION
+            # =============================
+            proba = gbc.predict_proba(features)[0]
+
+            phishing_prob = proba[0] * 100   # class 0
+            legit_prob = proba[1] * 100      # class 1
 
             confidence = legit_prob
 
-            # 🔥 3-LEVEL DECISION LOGIC
+            # =============================
+            # 3-LEVEL DECISION LOGIC
+            # =============================
             if confidence >= 80:
-                pred = f"Website appears SAFE ({confidence:.2f}% confidence)"
+                prediction = f"Website appears SAFE ({confidence:.2f}% confidence)"
                 xx = 1
 
             elif 50 <= confidence < 80:
-                pred = f"Website looks SUSPICIOUS ({confidence:.2f}% confidence)"
+                prediction = f"Website looks SUSPICIOUS ({confidence:.2f}% confidence)"
                 xx = 0
 
             else:
-                pred = f"Website is likely PHISHING ({phishing_prob:.2f}% risk)"
+                prediction = f"Website is likely PHISHING ({phishing_prob:.2f}% risk)"
                 xx = -1
 
         return render_template(
             "index.html",
-            prediction=pred,
+            prediction=prediction,
             url=url,
             xx=xx
         )
 
+    # GET request
     return render_template("index.html")
 
 # ---------------------------------
-# RUN APP (Render Compatible)
+# RUN APP (Render / Production Safe)
 # ---------------------------------
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
