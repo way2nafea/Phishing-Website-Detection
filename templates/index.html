@@ -1,110 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>Website Phishing URL Detection</title>
+  <title>Website Phishing URL Detection</title>
 
-    <!-- Bootstrap -->
-    <link rel="stylesheet"
-          href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+  <!-- Bootstrap -->
+  <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
 
-    <!-- Custom CSS -->
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='style.css') }}">
+  <!-- Cyber Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&family=Share+Tech+Mono&display=swap"
+        rel="stylesheet">
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}">
 </head>
 
 <body>
 
-<div class="container">
+<!-- ================= MATRIX TERMINAL SCAN (MUST BE FIRST) ================= -->
+<div id="matrixScan">
+  <div class="terminal">
+    <pre id="terminalText"></pre>
+    <span class="cursor">█</span>
+  </div>
+</div>
+
+<!-- ================= MAIN UI ================= -->
+<div class="scanner-wrapper">
+  <div class="container">
+
+    <h2 class="glitch" data-text="WEBSITE PHISHING URL DETECTION">
+      WEBSITE PHISHING URL DETECTION
+    </h2>
+
     <div class="row align-items-center">
 
-        <!-- ================= FORM SECTION ================= -->
-        <div class="col-md-6">
-            <h2 class="mb-4 text-center">
-                WEBSITE PHISHING URL DETECTION
-            </h2>
+      <!-- FORM -->
+      <div class="col-md-6 text-center">
+        <form action="/" method="post" id="scanForm">
 
-            <form action="/" method="post">
-                <input type="text"
-                       class="form__input"
-                       name="url"
-                       placeholder="Enter URL"
-                       required>
+          <input type="text"
+                 class="form__input"
+                 name="url"
+                 placeholder="Enter URL"
+                 required>
 
-                <label class="form__label">URL</label>
+          <div class="mt-3">
+            <button type="button"
+                    class="button mr-2"
+                    onclick="startMatrixScan()">
+              Check here
+            </button>
 
-                <button type="submit" class="button mt-3">
-                    Check here
-                </button>
+            <button type="button"
+                    class="button"
+                    onclick="window.location.href='/'">
+              Reset
+            </button>
+          </div>
 
-                <button type="button"
-                        class="button mt-3"
-                        onclick="window.location.href='/'">
-                    Reset
-                </button>
-            </form>
-        </div>
+        </form>
+      </div>
 
-        <!-- ================= RESULT SECTION ================= -->
-        <div class="col-md-6 mt-4 text-center">
+      <!-- RESULT -->
+      <div class="col-md-6 text-center">
+        {% if url and prediction %}
 
-            {% if url and prediction %}
+          <p class="mt-3">
+            <strong>Entered URL:</strong><br>{{ url }}
+          </p>
 
-                <p><strong>Entered URL:</strong><br>{{ url }}</p>
+          {% if xx == 1 %}
+            <h3 class="confidence safe">{{ prediction }}</h3>
+            <a href="{{ url }}" target="_blank" class="button1 mt-3">
+              Continue
+            </a>
 
-                {% if xx == 1 %}
-                    <!-- ✅ SAFE -->
-                    <h3 class="confidence safe">
-                        {{ prediction }}
-                    </h3>
+          {% elif xx == 0 %}
+            <h3 class="confidence warning">{{ prediction }}</h3>
+            <a href="{{ url }}" target="_blank"
+               class="button2 mt-3"
+               onclick="return confirm('Suspicious website. Continue?');">
+              Continue with caution
+            </a>
 
-                    <a href="{{ url }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="button1 mt-3 d-inline-block">
-                        Continue
-                    </a>
+          {% elif xx == -1 %}
+            <h3 class="confidence phishing">{{ prediction }}</h3>
+            <a href="{{ url }}" target="_blank"
+               class="button2 mt-3"
+               onclick="return confirm('PHISHING WARNING! Continue?');">
+              Still want to continue
+            </a>
+          {% endif %}
 
-                {% elif xx == 0 %}
-                    <!-- ⚠️ SUSPICIOUS -->
-                    <h3 class="confidence warning">
-                        {{ prediction }}
-                    </h3>
-
-                    <a href="{{ url }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="button2 mt-3 d-inline-block"
-                       onclick="return confirm('This website looks suspicious. Do you still want to continue?');">
-                        Continue with Caution
-                    </a>
-
-                {% elif xx == -1 %}
-                    <!-- 🚨 PHISHING -->
-                    <h3 class="confidence phishing">
-                        {{ prediction }}
-                    </h3>
-
-                    <a href="{{ url }}"
-                       target="_blank"
-                       rel="noopener noreferrer"
-                       class="button2 mt-3 d-inline-block"
-                       onclick="return confirm('WARNING! This website is likely phishing. Do you still want to continue?');">
-                        Still want to continue
-                    </a>
-                {% endif %}
-
-            {% endif %}
-
-        </div>
+        {% endif %}
+      </div>
 
     </div>
 
     <p class="mt-4 text-center">©2026 Team Apex</p>
+
+  </div>
 </div>
+
+<!-- ================= MATRIX SCRIPT ================= -->
+<script>
+  const scanLines = [
+    "[+] Initializing security scan...",
+    "[+] Resolving domain information...",
+    "[+] Checking SSL certificate...",
+    "[+] Analyzing URL structure...",
+    "[+] Extracting features...",
+    "[+] Running ML detection...",
+    "[✓] Scan completed"
+  ];
+
+  function startMatrixScan() {
+    const scanBox = document.getElementById("matrixScan");
+    const terminal = document.getElementById("terminalText");
+    const form = document.getElementById("scanForm");
+
+    terminal.textContent = "";
+    scanBox.style.display = "flex";
+
+    let index = 0;
+
+    const interval = setInterval(() => {
+      terminal.textContent += scanLines[index] + "\n";
+      index++;
+
+      if (index === scanLines.length) {
+        clearInterval(interval);
+        setTimeout(() => {
+          form.submit();
+        }, 900);
+      }
+    }, 350);
+  }
+</script>
 
 </body>
 </html>
