@@ -1,2 +1,4 @@
 User-agent: *
 Allow: /
+
+Sitemap: https://phishing-website-detection-1-qex8.onrender.com/sitemap.xml
