@@ -1,5 +1,5 @@
-
 🔐 Phishing Website Detection System (Advanced)
+
 📌 Overview
 The Phishing Website Detection System is an advanced cybersecurity web application that detects malicious and phishing URLs using:
 🧠 Machine Learning
@@ -7,8 +7,10 @@ The Phishing Website Detection System is an advanced cybersecurity web applicati
 🔎 DNS & WHOIS validation
 🔐 SSL Certificate verification
 📊 Risk scoring system
+
 👤 User authentication & scan history
 The system provides real-time threat intelligence and generates a detailed security report for any given URL.
+
 🚀 Key Features
 🛡️ Multi-Layer Security Detection
 IP address detection
@@ -19,8 +21,9 @@ Look-alike domain detection
 Suspicious keyword structure detection
 Google Safe Browsing API integration
 Machine Learning prediction
+
 📊 Professional Risk Score System
-Each URL is assigned a risk score (0–100%)
+Each URL is assigned a risk score (0–100%):
 🟢 Low Risk (Safe)
 🟡 Medium Risk (Suspicious)
 🔴 High Risk (Phishing)
@@ -30,56 +33,71 @@ User registration
 Secure password hashing (Bcrypt)
 Login / Logout
 Session management (Flask-Login)
+
 📈 Dashboard & Scan History
 Stores each scan in database
 User-specific history
 Risk score tracking
 Persistent storage using SQLite
+
 🧠 Technology Stack
+
 Backend
+
 Python
 Flask
 SQLAlchemy
 Flask-Login
 Flask-Bcrypt
+
 Machine Learning
+
 Scikit-learn
 Trained classification model (.pkl)
+
 Security Intelligence
+
 Google Safe Browsing API
 WHOIS lookup
 DNS validation
 SSL certificate verification
+
 Frontend
+
 HTML
 CSS
 Bootstrap
 Database
 SQLite (scans.db)
+
 Deployment
+
 Render
+
 Version Control
+
 Git & GitHub
+
 ⚙️ System Architecture
-Copy code
 
 User → Flask Web App → Security Checks Layer → ML Model → Risk Scoring Engine → Database → Response UI
-Flow:
-User logs in
-User submits URL
-System performs:
-DNS check
-SSL validation
-WHOIS domain age check
-Google Safe Browsing check
-Structural analysis
-ML prediction
-Risk score is calculated
-Result stored in database
-Detailed report shown to user
-📁 Project Structure
-Copy code
 
+1.Flow:
+2.User logs in
+3.User submits URL
+    System performs:
+    DNS check
+    SSL validation
+    WHOIS domain age check
+    Google Safe Browsing check
+    Structural analysis
+    ML prediction
+4.Risk score is calculated
+5.Result stored in database
+6.Detailed report shown to user
+
+```
+📁 Project Structure
 Phishing-Website-Detection/
 │
 ├── app.py
@@ -108,67 +126,53 @@ Phishing-Website-Detection/
 ├── requirements.txt
 ├── README.md
 └── .env
+```
+
+```
 🛠️ Installation & Setup (Local)
 1️⃣ Clone Repository
-Copy code
-Bash
 git clone https://github.com/way2nafea/Phishing-Website-Detection.git
 cd Phishing-Website-Detection
 2️⃣ Create Virtual Environment
-Copy code
-Bash
 python -m venv venv
-venv\Scripts\activate
+venv\Scripts\activate   # Windows
+# source venv/bin/activate   # Mac/Linux
 3️⃣ Install Dependencies
-Copy code
-Bash
 pip install -r requirements.txt
 4️⃣ Create Environment File
-Create .env file:
-Copy code
-
+Create a .env file:
 GOOGLE_API_KEY=your_google_safe_browsing_api_key
 SECRET_KEY=your_secret_key
 5️⃣ Initialize Database
-Copy code
-Bash
 python
->>> from app import app
->>> from database import db
->>> with app.app_context():
-...     db.create_all()
+Then inside Python shell:
+from app import app
+from database import db
+
+with app.app_context():
+    db.create_all()
+Exit Python.
 6️⃣ Run Application
-Copy code
-Bash
 python app.py
 Visit:
-Copy code
-
 http://127.0.0.1:10000
+```
+
 🌐 Live Deployment
 🔗 Live URL:
 https://phishing-website-detection-gfss.onrender.com
-Note: Free Render services may take 20–30 seconds to wake up.
-📊 Sample Risk Evaluation
-URL Type
-Example
-Risk Score
-Legitimate
-https://www.google.com
-5%
-Suspicious
-https://paypal-security-login.xyz
-65%
-Phishing
-http://secure-login-paypal.example.com
-95%
+⚠️ Note: Free Render services may take 20–30 seconds to wake up.
+
 🎯 Use Cases
+
 Cybersecurity academic projects
 Phishing awareness tools
 URL threat intelligence demo
 ML + Security integration example
 Resume-level backend project
+
 🔮 Future Enhancements
+
 🧬 Deep Learning (LSTM / Transformer)
 📊 Dashboard analytics charts
 🌍 Website screenshot preview
@@ -177,13 +181,16 @@ Resume-level backend project
 🌐 REST API version
 ☁️ PostgreSQL production database
 🔐 Security Features
+
 Password hashing using Bcrypt
 Session protection using Flask-Login
 Input normalization
 Multi-layer phishing detection
 Google threat intelligence integration
+
 📜 License
 This project is developed for academic and educational purposes.
+
 👨‍💻 Developer
 Developed by Team Apex
 Computer Engineering Student
