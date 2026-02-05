@@ -30,6 +30,7 @@ from database import db
 from models import Scan, User
 
 
+    
 # =============================
 # APP CONFIG
 # =============================
@@ -255,6 +256,18 @@ def robots():
 @app.route("/sitemap.xml")
 def sitemap():
     return app.send_static_file("sitemap.xml")
+
+# =============================
+# GOOGLE SITE VERIFICATION
+# =============================
+from flask import send_from_directory
+
+@app.route("/google669baacc40f95010.html")
+def google_verification():
+    return send_from_directory("static", "google669baacc40f95010.html")
+
+
+
 
 
 # =============================
