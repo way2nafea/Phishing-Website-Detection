@@ -1,26 +1,31 @@
-flask
+Flask
 gunicorn
 
+# Database
+Flask-SQLAlchemy
+
+# Authentication
+Flask-Login
+Flask-Bcrypt
+
+# Machine Learning
 numpy
 pandas
 scikit-learn
 joblib
 
+# Security & URL Processing
 requests
 beautifulsoup4
 lxml
 tldextract
-urllib3
-
+dnspython
 python-whois
 python-dateutil
+urllib3
+
+# Google Safe Browsing
 googlesearch-python
 
-matplotlib
-seaborn
-
-requests
-
-dnspython
-
-python-whois
+# Environment Variables
+python-dotenv
