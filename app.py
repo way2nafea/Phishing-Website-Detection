@@ -94,48 +94,49 @@ def index():
             risk_score = 98
             xx = -1
 
-        elif get_domain_age(domain) and get_domain_age(domain) < 30:
-            age = get_domain_age(domain)
-            prediction = f"⚠️ Domain is very new ({age} days old) - High Risk"
-            risk_score = 75
-            xx = -1
-
-        elif not check_ssl(domain):
-            prediction = "⚠️ Invalid or missing SSL certificate"
-            risk_score = 60
-            xx = 0
-
-        elif domain in TRUSTED_DOMAINS:
-            prediction = "Website appears SAFE (99.00% confidence)"
-            risk_score = 5
-            xx = 1
-
-        elif is_similar_to_trusted(domain):
-            prediction = "⚠️ Domain looks similar to trusted site (Possible Spoofing)"
-            risk_score = 70
-            xx = 0
-
-        elif suspicious_structure(domain):
-            prediction = "⚠️ URL contains suspicious keywords or structure"
-            risk_score = 65
-            xx = 0
-
         else:
-            phishing_prob, legit_prob = model.predict(url)
+            age = get_domain_age(domain)
 
-            risk_score = phishing_prob
+            if age and age < 30:
+                prediction = f"⚠️ Domain is very new ({age} days old) - High Risk"
+                risk_score = 75
+                xx = -1
 
-            if legit_prob >= 70:
-                prediction = f"Website appears SAFE ({legit_prob:.2f}% confidence)"
+            elif not check_ssl(domain):
+                prediction = "⚠️ Invalid or missing SSL certificate"
+                risk_score = 60
+                xx = 0
+
+            elif domain in TRUSTED_DOMAINS:
+                prediction = "Website appears SAFE (99.00% confidence)"
+                risk_score = 5
                 xx = 1
 
-            elif 50 <= legit_prob < 70:
-                prediction = f"Website looks SUSPICIOUS ({legit_prob:.2f}% confidence)"
+            elif is_similar_to_trusted(domain):
+                prediction = "⚠️ Domain looks similar to trusted site (Possible Spoofing)"
+                risk_score = 70
+                xx = 0
+
+            elif suspicious_structure(domain):
+                prediction = "⚠️ URL contains suspicious keywords or structure"
+                risk_score = 65
                 xx = 0
 
             else:
-                prediction = f"Website is likely PHISHING ({phishing_prob:.2f}% risk)"
-                xx = -1
+                phishing_prob, legit_prob = model.predict(url)
+                risk_score = phishing_prob
+
+                if legit_prob >= 70:
+                    prediction = f"Website appears SAFE ({legit_prob:.2f}% confidence)"
+                    xx = 1
+
+                elif 50 <= legit_prob < 70:
+                    prediction = f"Website looks SUSPICIOUS ({legit_prob:.2f}% confidence)"
+                    xx = 0
+
+                else:
+                    prediction = f"Website is likely PHISHING ({phishing_prob:.2f}% risk)"
+                    xx = -1
 
         # =============================
         # SAVE SCAN WITH USER ID
@@ -173,7 +174,6 @@ def register():
         email = request.form.get("email")
         password = request.form.get("password")
 
-        # Check if user already exists
         existing_user = User.query.filter_by(email=email).first()
         if existing_user:
             flash("Email already registered. Please login.", "danger")
@@ -236,8 +236,25 @@ def logout():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    scans = Scan.query.filter_by(user_id=current_user.id).order_by(Scan.id.desc()).all()
+    scans = Scan.query.filter_by(user_id=current_user.id)\
+        .order_by(Scan.id.desc()).all()
     return render_template("dashboard.html", scans=scans)
+
+
+# =============================
+# ROBOTS.TXT (SEO)
+# =============================
+@app.route("/robots.txt")
+def robots():
+    return app.send_static_file("robots.txt")
+
+
+# =============================
+# SITEMAP.XML (SEO)
+# =============================
+@app.route("/sitemap.xml")
+def sitemap():
+    return app.send_static_file("sitemap.xml")
 
 
 # =============================
