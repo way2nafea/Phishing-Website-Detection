@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Website Phishing URL Detection</title>
+
+  <!-- Bootstrap -->
+  <link rel="stylesheet"
+        href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+
+  <!-- Custom CSS -->
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="main-wrapper">
+  <div class="container custom-card">
+
+    <h2 class="main-title text-center mb-4">
+      Website Phishing URL Detection
+    </h2>
+
+    <!-- ================= FORM ================= -->
+    <form action="/" method="post" id="scanForm">
+
+      <div class="form-group">
+        <input type="text"
+               class="form-control form-control-lg"
+               name="url"
+               placeholder="Enter website URL (e.g. https://example.com)"
+               required>
+      </div>
+
+      <div class="text-center mt-3">
+        <button type="submit" class="btn btn-success btn-lg px-4">
+          Scan URL
+        </button>
+
+        <a href="/" class="btn btn-secondary btn-lg px-4 ml-2">
+          Reset
+        </a>
+      </div>
+
+      <!-- Loading Spinner -->
+      <div id="loading" class="text-center mt-4" style="display:none;">
+        <div class="spinner-border text-success" role="status"></div>
+        <p class="mt-2">Performing security analysis...</p>
+      </div>
+
+    </form>
+
+    <!-- ================= RESULT ================= -->
+    {% if url and prediction %}
+    <hr class="mt-5">
+
+    <div class="report-section mt-4">
+
+      <h4 class="mb-3">Security Analysis Report</h4>
+
+      <p><strong>Entered URL:</strong><br> {{ url }}</p>
+
+      {% if xx == 1 %}
+        <div class="alert alert-success mt-3">
+          <strong>Final Verdict:</strong><br>
+          {{ prediction }}
+        </div>
+
+        <a href="{{ url }}" target="_blank"
+           class="btn btn-outline-success mt-3">
+           Continue to Website
+        </a>
+
+      {% elif xx == 0 %}
+        <div class="alert alert-warning mt-3">
+          <strong>Final Verdict:</strong><br>
+          {{ prediction }}
+        </div>
+
+        <a href="{{ url }}" target="_blank"
+           class="btn btn-outline-warning mt-3"
+           onclick="return confirm('This website appears suspicious. Continue?');">
+           Continue with Caution
+        </a>
+
+      {% elif xx == -1 %}
+        <div class="alert alert-danger mt-3">
+          <strong>Final Verdict:</strong><br>
+          {{ prediction }}
+        </div>
+
+        <a href="{{ url }}" target="_blank"
+           class="btn btn-outline-danger mt-3"
+           onclick="return confirm('High Risk! Are you sure you want to proceed?');">
+           Continue Anyway
+        </a>
+      {% endif %}
+
+    </div>
+    {% endif %}
+
+    <p class="text-center mt-5 footer-text">
+      © 2026 Team Apex
+    </p>
+
+  </div>
+</div>
+
+<script>
+  document.getElementById("scanForm").addEventListener("submit", function () {
+      document.getElementById("loading").style.display = "block";
+  });
+</script>
+
+</body>
+</html>
