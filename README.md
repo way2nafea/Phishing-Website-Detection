@@ -133,16 +133,24 @@ Phishing-Website-Detection/
 1️⃣ Clone Repository
 git clone https://github.com/way2nafea/Phishing-Website-Detection.git
 cd Phishing-Website-Detection
+```
+```
 2️⃣ Create Virtual Environment
 python -m venv venv
 venv\Scripts\activate   # Windows
 # source venv/bin/activate   # Mac/Linux
+```
+```
 3️⃣ Install Dependencies
 pip install -r requirements.txt
+```
+```
 4️⃣ Create Environment File
 Create a .env file:
 GOOGLE_API_KEY=your_google_safe_browsing_api_key
 SECRET_KEY=your_secret_key
+```
+```
 5️⃣ Initialize Database
 python
 Then inside Python shell:
@@ -152,6 +160,8 @@ from database import db
 with app.app_context():
     db.create_all()
 Exit Python.
+```
+```
 6️⃣ Run Application
 python app.py
 Visit:
