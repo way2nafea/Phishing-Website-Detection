@@ -1,7 +1,9 @@
-# app.py
-
-from flask import Flask, render_template, request, redirect, url_for, flash
+# =============================
+# IMPORTS
+# =============================
+from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 import os
+import numpy as np
 
 from flask_login import (
     LoginManager,
@@ -12,6 +14,7 @@ from flask_login import (
 )
 
 from flask_bcrypt import Bcrypt
+from tensorflow.keras.models import load_model
 
 from phishing_engine.utils import normalize_url, get_domain
 from phishing_engine.security_checks import (
@@ -30,7 +33,6 @@ from database import db
 from models import Scan, User
 
 
-    
 # =============================
 # APP CONFIG
 # =============================
@@ -57,6 +59,36 @@ def load_user(user_id):
 # LOAD ML MODEL
 # =============================
 model = PhishingModel()
+
+
+# =============================
+# LOAD DL MODEL (Numeric Feature Based)
+# =============================
+DL_MODEL_PATH = "pickle/dl_model.h5"
+
+dl_model = None
+
+if os.path.exists(DL_MODEL_PATH):
+    dl_model = load_model(DL_MODEL_PATH)
+    print("✅ DL Model Loaded Successfully")
+else:
+    print("⚠ DL Model not found")
+
+
+# =============================
+# DL PREDICTION FUNCTION
+# =============================
+def dl_predict(features):
+    if not dl_model:
+        return None
+
+    features = np.array(features).reshape(1, -1)
+    prediction = dl_model.predict(features)[0][0]
+
+    phishing_prob = float(prediction * 100)
+    legit_prob = 100 - phishing_prob
+
+    return phishing_prob, legit_prob
 
 
 # =============================
@@ -124,7 +156,18 @@ def index():
                 xx = 0
 
             else:
+                # =============================
+                # ML PREDICTION
+                # =============================
                 phishing_prob, legit_prob = model.predict(url)
+
+                # If ML confidence weak → use DL (optional)
+                if 40 <= legit_prob <= 60 and dl_model:
+                    print("🔬 ML Confidence Weak → Using DL Model")
+                    # NOTE: Only works if you extract numeric features properly
+                    # For now we skip DL unless you build feature extractor
+                    # dl_result = dl_predict(features)
+
                 risk_score = phishing_prob
 
                 if legit_prob >= 70:
@@ -140,7 +183,7 @@ def index():
                     xx = -1
 
         # =============================
-        # SAVE SCAN WITH USER ID
+        # SAVE SCAN
         # =============================
         new_scan = Scan(
             url=raw_url,
@@ -243,31 +286,21 @@ def dashboard():
 
 
 # =============================
-# ROBOTS.TXT (SEO)
+# SEO ROUTES
 # =============================
 @app.route("/robots.txt")
 def robots():
     return app.send_static_file("robots.txt")
 
 
-# =============================
-# SITEMAP.XML (SEO)
-# =============================
 @app.route("/sitemap.xml")
 def sitemap():
     return app.send_static_file("sitemap.xml")
 
-# =============================
-# GOOGLE SITE VERIFICATION
-# =============================
-from flask import send_from_directory
 
 @app.route("/google669baacc40f95010.html")
 def google_verification():
     return send_from_directory("static", "google669baacc40f95010.html")
-
-
-
 
 
 # =============================

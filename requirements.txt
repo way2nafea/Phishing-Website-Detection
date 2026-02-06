@@ -29,3 +29,7 @@ googlesearch-python
 
 # Environment Variables
 python-dotenv
+
+#Deep Learning
+tensorflow  
+keras
