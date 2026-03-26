@@ -1,5 +1,23 @@
 # Phishing Website Detection System
 
+**Abstract:** This project uses machine learning techniques to analyze website URLs and detect phishing websites accurately.
+
+## Project Information
+
+### Project Members
+1. NAKADE ABDUL NAFEA NASIR (Team Leader)
+2. SHAIKH ABDUL RAHIM SULTAN AHMED
+3. SAYYED ZIDAN NASIR
+4. ANSARI ZAID AYUB
+
+### Project Guide
+- PROF. PRATHAMESH YADAV (Primary Guide)
+
+### Subject Details
+- **Class:** SE (COMP) Div B - 2025-2026
+- **Subject:** Mini Project-I (MP-1)
+- **Project Type:** Mini Project
+
 ## Overview
 
 An advanced cybersecurity web application that detects malicious and phishing URLs using machine learning, Google Safe Browsing API, DNS & WHOIS validation, and SSL certificate verification. The system provides real-time threat intelligence with detailed security reports for any given URL.
@@ -187,15 +205,33 @@ Visit: `http://127.0.0.1:10000`
 - REST API version
 - PostgreSQL production database
 
+## Dataset Used
+
+1. [Kaggle Phishing Dataset](https://kaggle.com/)
+2. [URLHAUS Dataset](https://urlhaus.abuse.ch/)
+
+## References
+
+- [Kaggle Phishing Datasets](https://kaggle.com/)
+- [URLHAUS - Abuse.ch](https://urlhaus.abuse.ch/)
+- [Google Safe Browsing Documentation](https://developers.google.com/safe-browsing)
+- [WHOIS Protocol Documentation](https://www.iana.org/assignments/whois-parameters/)
+
 ## License
 
 This project is developed for academic and educational purposes. See [LICENSE](LICENSE) for details.
 
 ## Developer
 
-Developed by Team Apex  
-Computer Engineering Student  
-Cybersecurity & Machine Learning Enthusiast
+**Team Members:**
+- Nakade Abdul Nafea Nasir (Team Leader)
+- Shaikh Abdul Rahim Sultan Ahmed
+- Sayyed Zidan Nasir
+- Ansari Zaid Ayub
+
+**Guide:** Prof. Prathamesh Yadav
+
+Computer Engineering Students - Cybersecurity & Machine Learning Enthusiasts
 
 ## Conclusion
 
