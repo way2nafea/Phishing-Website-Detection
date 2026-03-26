@@ -157,7 +157,7 @@ Visit: `http://127.0.0.1:10000`
 
 ## Live Deployment
 
-**URL:** https://phishing-website-detection-gfss.onrender.com
+**URL:** https://phishing-website-detection-1-qex8.onrender.com
 
 > **Note:** Free Render services may take 20–30 seconds to wake up on first access.
 
