@@ -1,0 +1,149 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Assistant - Phishing Detector</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-dI4OMlhkQpHnnFG8FPPrV4jgxQJQJmRoYFyrFJTtmXNqpu3tB4c1C8Q4ixjhRVH1ywT5iE0gVhK1bP4NvulwIg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body>
+  <header class="app-navbar">
+    <div class="nav-brand"><i class="fa-solid fa-shield-halved"></i> Phishing Detector</div>
+    <nav class="nav-links">
+      <a href="{{ url_for('index') }}" class="nav-link"><i class="fa-solid fa-magnifying-glass"></i> Scan</a>
+      <a href="{{ url_for('dashboard') }}" class="nav-link"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+      <a href="{{ url_for('assistant') }}" class="nav-link active"><i class="fa-solid fa-robot"></i> Assistant</a>
+      <a href="{{ url_for('security_suite') }}" class="nav-link"><i class="fa-solid fa-lock"></i> Security</a>
+      <a href="{{ url_for('logout') }}" class="nav-link btn-ghost"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    </nav>
+  </header>
+
+  <main class="app-container fade-in-page">
+    <section class="dashboard-header">
+      <h1>AI Smart Assistant</h1>
+      <p class="subtext">Analyze URLs with guided advice and quick threat insights.</p>
+    </section>
+
+    <section class="card-grid">
+      <article class="stat-card">
+        <h3><i class="fa-solid fa-bot"></i> Predictions</h3>
+        <p class="stat-value">{{ top_phishing|length if top_phishing else 0 }}</p>
+      </article>
+      <article class="stat-card">
+        <h3><i class="fa-solid fa-newspaper"></i> Feed Entries</h3>
+        <p class="stat-value">{{ threat_feed|length if threat_feed else 0 }}</p>
+      </article>
+      <article class="stat-card">
+        <h3><i class="fa-solid fa-flag"></i> Reports</h3>
+        <p class="stat-value">{{ reported_phishes|length if reported_phishes else 0 }}</p>
+      </article>
+    </section>
+
+    {% if not top_phishing and not threat_feed and not reported_phishes %}
+      <section class="info-card" style="text-align:center;">
+        <h2>🚀 No assistant insights yet</h2>
+        <p class="small-info">Use the URL analyzer to generate your first intelligence report.</p>
+      </section>
+    {% endif %}
+
+    <section class="card">
+      <h2>Assistant URL Analysis</h2>
+      <form action="{{ url_for('assistant') }}" method="get" class="input-group">
+        <label for="assistant-url">Target URL</label>
+        <input id="assistant-url" type="text" name="url" value="{{ request.args.get('url','') }}" placeholder="https://example.com" required />
+        <div class="actions">
+          <button class="btn btn-primary" type="submit">Analyze URL</button>
+          <a class="btn btn-secondary" href="{{ url_for('dashboard') }}">View Dashboard</a>
+        </div>
+      </form>
+
+      {% if suggestion %}
+      {% set case = suggestion.status|lower %}
+      {% set status_class = 'green' if case == 'safe' else 'yellow' if case == 'suspicious' else 'red' %}
+      <div class="result-block">
+        <h3>Result: <span class="pill {{ status_class }}">{{ suggestion.status|upper }}</span></h3>
+        <p class="small-info">Domain: {{ suggestion.domain }} | Normalized: {{ suggestion.normalized }}</p>
+
+        <div>
+          <strong>Why this result?</strong>
+          <ul>
+            {% if suggestion.issues %}
+              {% for issue in suggestion.issues %}
+              <li>⚠️ {{ issue }}</li>
+              {% endfor %}
+            {% else %}
+              <li>✅ No immediate risk indicators from static analysis.</li>
+            {% endif %}
+          </ul>
+        </div>
+
+        <div class="actions" style="margin-top:14px;">
+          <a class="btn btn-primary" href="{{ url_for('index', url=suggestion.raw_url) }}">Run Full Scan</a>
+        </div>
+      </div>
+      {% endif %}
+    </section>
+
+    <section class="card">
+      <h2>Top Scam / Phishing Patterns</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>URL</th><th>Reason</th><th>Source</th><th>Last Seen</th></tr>
+          </thead>
+          <tbody>
+            {% for item in top_phishing %}
+              <tr>
+                <td class="url-cell">{{ item.url }}</td>
+                <td>{{ item.reason }}</td>
+                <td>{{ item.source }}</td>
+                <td>{{ item.last_seen }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>User Reports</h2>
+      {% if reported_phishes %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>URL</th><th>Reason</th><th>User</th><th>When</th></tr></thead>
+          <tbody>
+            {% for report in reported_phishes[:6] %}
+              <tr>
+                <td class="url-cell">{{ report.url }}</td>
+                <td>{{ report.reason }}</td>
+                <td>{{ report.user }}</td>
+                <td>{{ report.reported_on }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <p>No reported phishing URLs yet.</p>
+      {% endif %}
+    </section>
+
+  </main>
+
+  <footer class="footer">© 2026 Team Apex </footer>
+
+  <script>
+    document.addEventListener('submit', function(evt) {
+      const button = evt.target.querySelector('button[type="submit"]');
+      if (button) {
+        button.disabled = true;
+        const originalText = button.innerHTML;
+        button.innerHTML = '<span class="loader"></span> Analyzing...';
+        setTimeout(() => { button.innerHTML = originalText; button.disabled = false; }, 12000);
+      }
+    });
+  </script>
+</body>
+</html>

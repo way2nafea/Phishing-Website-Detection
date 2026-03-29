@@ -1,6 +1,7 @@
 from database import db
 from flask_login import UserMixin
 from flask_bcrypt import Bcrypt
+import datetime
 
 bcrypt = Bcrypt()
 
@@ -22,7 +23,8 @@ class User(db.Model, UserMixin):
 class Scan(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     url = db.Column(db.String(500))
-    risk_score = db.Column(db.Float)
+    risk_score = db.Column(db.Float, default=0.0)
     result = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow, nullable=False)
 
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)

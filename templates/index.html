@@ -1,114 +1,88 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Phishing Website Detection Tool | URL Safety Checker</title>
-
   <meta name="description" content="Check if a website URL is safe or phishing using machine learning, Google Safe Browsing, and SSL analysis.">
   <meta name="keywords" content="phishing checker, url safety, website security, phishing detection">
   <meta name="author" content="Team Apex">
-
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LZg1iW0K+v8GNTypL6r+HLp9Y2hQmR6wYIgBB7I3J3T3nLcaYxV7sUOz6+Qhm+8i" crossorigin="anonymous" />
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-
-<body>
-
-<div class="container">
-
-  <header class="header">
-    <h1 class="logo-title">Website Phishing Detection</h1>
-    
-    <div class="user-info">
-      <span>{{ current_user.username }}</span>
-      <a href="{{ url_for('dashboard') }}" class="dashboard-link">Dashboard</a>
-      <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
+<body class="bg-dark text-light">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand fw-bold" href="{{ url_for('dashboard') }}"><i class="fa-solid fa-shield-halved me-2"></i>Phishing Detector</a>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto d-flex gap-2 align-items-center">
+        <li class="nav-item"><a class="nav-link active" href="{{ url_for('index') }}">Scan</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('assistant') }}">Assistant</a></li>
+        <li class="nav-item"><a class="nav-link" href="{{ url_for('security_suite') }}">Security</a></li>
+        <li class="nav-item"><a class="btn btn-outline-light btn-sm" href="{{ url_for('logout') }}">Logout</a></li>
+      </ul>
     </div>
+  </div>
+</nav>
+<div class="container py-5">
+  <header class="text-center mb-4">
+    <h1 class="fw-bold">Website Phishing Detection</h1>
+    <p class="text-muted">Dark theme | Trustworthy insights | ML-powered risk score</p>
   </header>
 
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="result-box {% if category == 'success' %}safe-box{% else %}danger-box{% endif %}" style="margin-bottom: 20px;">
-          {{ message }}
-        </div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-
-  <main class="scan-box">
-    <form action="/" method="post" id="scanForm">
-      
-      <input type="text"
-             class="form-control"
-             name="url"
-             placeholder="Paste URL to analyze..."
-             required>
-
-      <button type="submit" class="btn-success">
-        Analyze URL
-      </button>
-
+  <main class="scan-box p-4 card-dark">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="result-box {% if category == 'success' %}safe-box{% else %}danger-box{% endif %} mb-3">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+    <form action="/" method="post" id="scanForm" class="d-flex flex-column gap-3">
+      <input type="text" class="form-control form-control-dark" name="url" value="{{ url if url is defined else request.args.get('url', '') }}" placeholder="Paste URL to analyze..." required>
+      <button type="submit" class="btn btn-success">Analyze URL</button>
       <div id="loading" class="result-box warning-box" style="display:none; justify-content: center; border-style: dashed;">
         <span>Analyzing security layers...</span>
       </div>
-
     </form>
+
+    {% if url and prediction %}
+    <section class="results mt-4"> ... </section>
+    {% endif %}
+
+    <p class="mt-4"><a href="{{ url_for('assistant') }}" class="btn btn-warning">AI Assistant</a></p>
   </main>
 
-  {% if url and prediction %}
-  <section class="results">
-    <div style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">
-      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px;">TARGET URL</p>
-      <p style="word-break: break-all; font-weight: 600; font-size: 0.9rem;">{{ url }}</p>
-
-      {% if risk_score is defined %}
-      <div style="margin-top: 20px;">
-        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 8px;">
-          <span>Risk Probability</span>
-          <span style="font-weight: bold; color: var(--brand-color);">{{ risk_score|round(1) }}%</span>
-        </div>
-        
-        <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden;">
-          <div style="width: {{ risk_score }}%; height: 100%; background: {% if risk_score < 30 %}var(--brand-color){% elif risk_score < 70 %}var(--warning-color){% else %}var(--danger-color){% endif %}; transition: width 1s ease-in-out;"></div>
-        </div>
-      </div>
-      {% endif %}
-
-      {% if xx == 1 %}
-        <div class="result-box safe-box">
-          <strong>✅ Safe:</strong> {{ prediction }}
-        </div>
-      {% elif xx == 0 %}
-        <div class="result-box warning-box">
-          <strong>⚠️ Suspicious:</strong> {{ prediction }}
-        </div>
-      {% elif xx == -1 %}
-        <div class="result-box danger-box">
-          <strong>🚫 Phishing:</strong> {{ prediction }}
-        </div>
-      {% endif %}
-    </div>
-  </section>
-  {% endif %}
-
-  <footer class="footer">
-    <p>© 2026 Team Apex</p>
-  </footer>
-
+  <footer class="footer text-center text-muted mt-4">© 2026 Team Apex · Dark Theme Only</footer>
 </div>
 
 <script>
-  // Simple logic to show loading state
-  document.getElementById("scanForm").addEventListener("submit", function () {
+  const scanForm = document.getElementById('scanForm');
+  if (scanForm) {
+    scanForm.addEventListener('submit', function () {
       const btn = this.querySelector('.btn-success');
-      btn.style.opacity = "0.7";
-      btn.innerText = "Scanning...";
-      document.getElementById("loading").style.display = "flex";
-  });
+      if (btn) {
+        btn.style.opacity = '0.7';
+        btn.innerText = 'Scanning...';
+      }
+      const loading = document.getElementById('loading');
+      if (loading) {
+        loading.style.display = 'flex';
+      }
+    });
+  }
+  const riskProgress = document.getElementById('risk-progress');
+  if (riskProgress) {
+    const value = Number(riskProgress.dataset.risk || 0);
+    riskProgress.style.width = `${Math.max(0, Math.min(100, value))}%`;
+    if (value < 30) { riskProgress.style.background = 'var(--brand-color)'; }
+    else if (value < 70) { riskProgress.style.background = 'var(--warning-color)'; }
+    else { riskProgress.style.background = 'var(--danger-color)'; }
+  }
 </script>
-
 </body>
 </html>

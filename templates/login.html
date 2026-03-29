@@ -66,6 +66,67 @@
         p {
             margin-top: 15px;
         }
+
+        .alert-container {
+            margin-bottom: 12px;
+            text-align: left;
+        }
+
+        .social-login {
+            margin-top: 14px;
+        }
+
+        .social-login p {
+            color: #9cf0ff;
+            margin-bottom: 8px;
+        }
+
+        .social-btn {
+            width: 100%;
+            border: none;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            padding: 10px;
+            font-weight: bold;
+            color: #fff;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(0,0,0,0.25);
+        }
+
+        .social-btn.google { background: #dd4b39; }
+        .social-btn.facebook { background: #3b5998; }
+
+        .alert {
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .alert-success {
+            background: rgba(0, 255, 170, 0.15);
+            color: #8affc8;
+            border: 1px solid #00ffa5;
+        }
+
+        .alert-danger {
+            background: rgba(255, 80, 80, 0.18);
+            color: #ffb3b3;
+            border: 1px solid #ff3d3d;
+        }
+
+        .checkbox-inline {
+            display: block;
+            text-align: left;
+            color: #cdfbff;
+            margin-bottom: 12px;
+            font-size: 0.85rem;
+        }
+
+        .checkbox-inline input {
+            margin-right: 7px;
+            transform: scale(1.1);
+        }
     </style>
 </head>
 
@@ -74,16 +135,56 @@
 <div class="card">
     <h2>🔐 Secure Login</h2>
 
-    <form method="POST">
-        <input type="email" name="email" placeholder="Email" required>
-        <input type="password" name="password" placeholder="Password" required>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="alert-container">
+          {% for category, message in messages %}
+            <div class="alert {{ 'alert-success' if category == 'success' else 'alert-danger' }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" id="loginForm">
+        <input type="email" id="email" name="email" placeholder="Email" required>
+        <input type="password" id="password" name="password" placeholder="Password" required>
+        <label class="checkbox-inline">
+            <input type="checkbox" name="remember"> Remember me
+        </label>
         <button type="submit">Login</button>
     </form>
 
+    <div class="social-login">
+        <p>or login with</p>
+        <button type="button" class="social-btn google" onclick="window.location='{{ url_for('login_google') }}'">Continue with Google</button>
+        <button type="button" class="social-btn facebook" onclick="window.location='{{ url_for('login_facebook') }}'">Continue with Facebook</button>
+    </div>
+
+    <p><small><a href="{{ url_for('reset_password') }}">Forgot password?</a></small></p>
+
     <p>Don't have an account?
-        <a href="/register">Register</a>
+        <a href="{{ url_for('register') }}">Register</a>
     </p>
 </div>
+
+<script>
+document.getElementById('loginForm').addEventListener('submit', function(event) {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(email)) {
+        alert('Please enter a valid email address.');
+        event.preventDefault();
+        return;
+    }
+
+    if (password.length < 8) {
+        alert('Password must be at least 8 characters long.');
+        event.preventDefault();
+    }
+});
+</script>
 
 </body>
 </html>
