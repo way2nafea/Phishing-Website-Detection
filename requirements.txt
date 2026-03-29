@@ -32,3 +32,10 @@ python-dotenv
 
 #Deep Learning
 tensorflow  
+
+# Social Authentication
+Flask-Dance
+
+# API Requests
+requests
+oauthlib
