@@ -1,7 +1,8 @@
 # =============================
 # IMPORTS
 # =============================
-from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, flash, \
+                  send_from_directory, jsonify                         # ← added jsonify
 import os
 import json
 import datetime
@@ -49,11 +50,17 @@ from phishing_engine.security_checks import (
 from phishing_engine.ml_engine import PhishingModel
 from phishing_engine.google_check import check_google_safe_browsing
 
-from database import db
-from models import Scan, User
+# ← New intelligence engine imports
+from phishing_engine.intelligence import (
+    get_live_phishing_feed,
+    get_threat_advisories,
+    fetch_news,
+    get_feed_meta,
+    invalidate_all_caches,
+)
 
-# In-memory report cache for user-reported phishing URLs
-reported_phishes = []
+from database import db
+from models import Scan, User, PhishReport                            # ← added PhishReport
 
 
 # =============================
@@ -70,8 +77,9 @@ db.init_app(app)
 bcrypt = Bcrypt(app)
 
 with app.app_context():
-    db.create_all()
+    db.create_all()          # also creates phish_report table automatically
     inspector = inspect(db.engine)
+
     if "scan" in inspector.get_table_names():
         scan_columns = [c['name'] for c in inspector.get_columns('scan')]
         with db.engine.begin() as conn:
@@ -79,6 +87,13 @@ with app.app_context():
                 conn.execute(text("ALTER TABLE scan ADD COLUMN risk_score FLOAT"))
             if 'created_at' not in scan_columns:
                 conn.execute(text("ALTER TABLE scan ADD COLUMN created_at DATETIME"))
+
+    # Migrate phish_report.status column if upgrading from old schema
+    if "phish_report" in inspector.get_table_names():
+        report_cols = [c['name'] for c in inspector.get_columns('phish_report')]
+        with db.engine.begin() as conn:
+            if 'status' not in report_cols:
+                conn.execute(text("ALTER TABLE phish_report ADD COLUMN status VARCHAR(32) DEFAULT 'pending'"))
 
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
@@ -214,94 +229,6 @@ def dl_predict(features):
     legit_prob = 100 - phishing_prob
 
     return phishing_prob, legit_prob
-
-
-def get_top_phishing_examples():
-    return [
-        {
-            "url": "http://secure-paypal.com",
-            "reason": "PayPal typosquatting impersonation",
-            "source": "phishfeed-light",
-            "last_seen": "2026-03-26",
-        },
-        {
-            "url": "http://appleid.apple.com-login.com",
-            "reason": "Fake Apple ID credential capture",
-            "source": "phishwatch",
-            "last_seen": "2026-03-25",
-        },
-        {
-            "url": "http://dropboxlogin-verify.com",
-            "reason": "Cloud storage credential theft",
-            "source": "threatintel-db",
-            "last_seen": "2026-03-24",
-        },
-        {
-            "url": "http://facebook-account-upgrade.com",
-            "reason": "Social media account takeover",
-            "source": "rapid7-radar",
-            "last_seen": "2026-03-26",
-        },
-        {
-            "url": "http://netflix.support-account.com",
-            "reason": "Subscription offer phishing",
-            "source": "openphish",
-            "last_seen": "2026-03-26",
-        },
-        {
-            "url": "http://amazon-order-alert.com",
-            "reason": "Purchase invoice scam",
-            "source": "phishalert",
-            "last_seen": "2026-03-24",
-        },
-        {
-            "url": "http://google-docs-share-509.com",
-            "reason": "Document sharing credential harvest",
-            "source": "phishfeed-light",
-            "last_seen": "2026-03-23",
-        },
-        {
-            "url": "http://microsoft-office-update.com",
-            "reason": "Office 365 account phishing",
-            "source": "threatstream",
-            "last_seen": "2026-03-22",
-        },
-        {
-            "url": "http://paypal-verified-login.com",
-            "reason": "Fake verification page",
-            "source": "phishtank",
-            "last_seen": "2026-03-26",
-        },
-        {
-            "url": "http://bankofamerica.security-update.com",
-            "reason": "Bank account data steal",
-            "source": "openphish",
-            "last_seen": "2026-03-25",
-        },
-    ]
-
-
-def get_threat_feed():
-    return [
-        {
-            "title": "New state tax refund phishing wave",
-            "impact": "high",
-            "flagged_on": "2026-03-27",
-            "recommendation": "Avoid clicking claims of immediate refunds, use official tax portal.",
-        },
-        {
-            "title": "Email with fake delivery status from logistics provider",
-            "impact": "medium",
-            "flagged_on": "2026-03-26",
-            "recommendation": "Verify tracking link via official carrier website.",
-        },
-        {
-            "title": "Credential reuse phishing campaign (new crypto exchange)",
-            "impact": "high",
-            "flagged_on": "2026-03-24",
-            "recommendation": "Enforce 2FA, check domain name carefully.",
-        },
-    ]
 
 
 def extract_urls_from_text(message):
@@ -784,42 +711,139 @@ def assistant():
     if request.method == "GET" and request.args.get("url"):
         suggestion = assistant_suggestion(request.args.get("url"))
 
-    top_phishing = get_top_phishing_examples()
-    threat_feed = get_threat_feed()
+    # ── Live intelligence data ──────────────────────────────────────────────
+    top_phishing = get_live_phishing_feed(limit=14)
+    threat_feed  = get_threat_advisories(count=4)
+    cyber_news   = fetch_news(limit=6)
+    feed_meta    = get_feed_meta()
+
+    # ── Community reports from DB (latest 20) ──────────────────────────────
+    reported_phishes = (
+        PhishReport.query
+        .order_by(PhishReport.reported_on.desc())
+        .limit(20)
+        .all()
+    )
+
     return render_template(
         "assistant.html",
         suggestion=suggestion,
         popular_suggestions=popular_suggestions,
         top_phishing=top_phishing,
         threat_feed=threat_feed,
-        reported_phishes=reported_phishes,
+        cyber_news=cyber_news,
+        feed_meta=feed_meta,
+        reported_phishes=[r.as_dict() for r in reported_phishes],
     )
 
 
 # =============================
 # REPORT PHISHING URL
+# =============================
 @app.route("/assistant/report", methods=["POST"])
 @login_required
 def assistant_report():
-    report_url = request.form.get("report_url", "").strip()
+    report_url    = request.form.get("report_url", "").strip()
     report_reason = request.form.get("report_reason", "User submitted phishing report").strip()
 
-    if report_url:
-        reported_phishes.insert(0, {
-            "url": report_url,
-            "reason": report_reason,
-            "user": current_user.username,
-            "reported_on": datetime.datetime.now().strftime("%Y-%m-%d %H:%M"),
-        })
-        flash("Thanks! URL reported for review.", "success")
-    else:
+    if not report_url:
         flash("Please provide a URL to report.", "danger")
+        return redirect(url_for("assistant"))
 
+    # Prevent duplicate reports from the same user
+    existing = PhishReport.query.filter_by(url=report_url, user_id=current_user.id).first()
+    if existing:
+        flash("You have already reported this URL. It is under review.", "info")
+        return redirect(url_for("assistant"))
+
+    report = PhishReport(
+        url=report_url,
+        reason=report_reason or "User submitted phishing report",
+        user_id=current_user.id,
+        username=current_user.username,
+        status="pending",
+    )
+    db.session.add(report)
+    db.session.commit()
+
+    flash("Thanks! URL submitted for community review.", "success")
     return redirect(url_for("assistant"))
+
+
+# =========================
+# INTELLIGENCE API ROUTES
+# =========================
+
+@app.route("/api/intelligence")
+@login_required
+def api_intelligence():
+    """
+    Returns the latest feed data as JSON.
+    The front-end JS polls this every 60 s and updates the page without reload.
+    """
+    try:
+        phishing_feed = get_live_phishing_feed(limit=14)
+        advisories    = get_threat_advisories(count=4)
+        news          = fetch_news(limit=6)
+        meta          = get_feed_meta()
+        reports       = (
+            PhishReport.query
+            .order_by(PhishReport.reported_on.desc())
+            .limit(20)
+            .all()
+        )
+
+        return jsonify({
+            "top_phishing":      phishing_feed,
+            "threat_feed":       advisories,
+            "cyber_news":        news,
+            "feed_meta":         meta,
+            "reported_phishes":  [r.as_dict() for r in reports],
+            "stats": {
+                "phishing_count": len(get_live_phishing_feed()),
+                "advisory_count": len(get_threat_advisories()),
+                "report_count":   PhishReport.query.count(),
+            },
+        })
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch intelligence data", "details": str(e)}), 500
+
+
+@app.route("/api/refresh-feeds", methods=["POST"])
+@login_required
+def refresh_feeds():
+    """Force-refresh all intelligence caches. Protect this endpoint in production."""
+    try:
+        invalidate_all_caches()
+        return jsonify({
+            "status":  "ok",
+            "message": "All feed caches cleared. Next request will re-fetch live data.",
+        })
+    except Exception as e:
+        return jsonify({"error": "Failed to refresh feeds", "details": str(e)}), 500
+
+
+@app.route("/assistant/report/<int:report_id>/status", methods=["POST"])
+@login_required
+def update_report_status(report_id):
+    """Admin endpoint to update the moderation status of a community report."""
+    try:
+        new_status = request.form.get("status", "pending")
+        if new_status not in ("pending", "verified", "malicious", "safe"):
+            return jsonify({"error": "Invalid status"}), 400
+
+        report = PhishReport.query.get_or_404(report_id)
+        report.status = new_status
+        db.session.commit()
+
+        return jsonify({"status": "ok", "new_status": new_status})
+    except Exception as e:
+        return jsonify({"error": "Failed to update report status", "details": str(e)}), 500
 
 
 # =============================
 # SECURITY SUITE ROUTES
+# =============================
 @app.route("/security-suite")
 @login_required
 def security_suite():
@@ -970,6 +994,7 @@ def dashboard():
 
 # =============================
 # PASSWORD RESET
+# =============================
 @app.route('/reset-password', methods=['GET', 'POST'])
 def reset_password():
     if request.method == 'POST':

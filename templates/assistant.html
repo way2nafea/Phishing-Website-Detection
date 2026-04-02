@@ -1,30 +1,88 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Assistant — PhishGuard AI</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+        crossorigin="anonymous" referrerpolicy="no-referrer">
   <style>
-    /* Impact badge */
+    /* ── Impact / severity badge ───────────────────────────────────────────── */
     .impact-badge {
       display: inline-flex;
       align-items: center;
       gap: 5px;
       padding: 3px 9px;
       border-radius: 14px;
-      font-size: 0.72rem;
-      font-weight: 600;
+      font-size: 0.7rem;
+      font-weight: 700;
       font-family: var(--font-display);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
     }
-    .impact-badge.high   { background: var(--danger-dim); color: var(--danger); }
+    .impact-badge.high   { background: var(--danger-dim);  color: var(--danger); }
     .impact-badge.medium { background: var(--warning-dim); color: var(--warning); }
     .impact-badge.low    { background: var(--success-dim); color: var(--success); }
 
-    /* Suggestion result block */
+    /* ── Live pulse indicator ──────────────────────────────────────────────── */
+    .live-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #22c55e;
+      animation: livePulse 1.8s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes livePulse {
+      0%, 100% { opacity: 1;   box-shadow: 0 0 0 0 rgba(34,197,94,.6); }
+      50%       { opacity: .7; box-shadow: 0 0 0 5px rgba(34,197,94,0); }
+    }
+
+    /* ── Feed header bar ───────────────────────────────────────────────────── */
+    .feed-header-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .feed-header-bar h2 { margin: 0; }
+    .feed-timestamp {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── Refresh button ────────────────────────────────────────────────────── */
+    .btn-refresh {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      background: rgba(45,114,212,.12);
+      color: var(--accent-blue);
+      border: 1px solid rgba(45,114,212,.25);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s, transform .15s;
+    }
+    .btn-refresh:hover {
+      background: rgba(45,114,212,.22);
+      transform: translateY(-1px);
+    }
+    .btn-refresh.spinning .fa-rotate { animation: spin360 .8s linear infinite; }
+    @keyframes spin360 { to { transform: rotate(360deg); } }
+
+    /* ── Suggestion result block ───────────────────────────────────────────── */
     .suggestion-block {
       margin-top: 18px;
       padding: 20px;
@@ -33,7 +91,6 @@
       border-radius: var(--radius-md);
       animation: slideInUp 0.4s ease;
     }
-
     .suggestion-block h3 {
       font-family: var(--font-display);
       font-size: 1rem;
@@ -43,7 +100,6 @@
       align-items: center;
       gap: 10px;
     }
-
     .suggestion-block ul {
       padding-left: 0;
       list-style: none;
@@ -51,7 +107,6 @@
       flex-direction: column;
       gap: 6px;
     }
-
     .suggestion-block li {
       font-size: 0.875rem;
       color: var(--text-secondary);
@@ -61,17 +116,158 @@
       border-left: 2px solid var(--accent-blue);
       line-height: 1.5;
     }
+    .suggestion-block li.safe-item { border-left-color: var(--success); color: #7be8c4; }
 
-    .suggestion-block li.safe-item {
-      border-left-color: var(--success);
-      color: #7be8c4;
+    /* ── Scrollable table wrapper ──────────────────────────────────────────── */
+    .table-scroll {
+      max-height: 340px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.1) transparent;
+    }
+    .table-scroll::-webkit-scrollbar { width: 5px; }
+    .table-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 4px; }
+
+    /* ── Status badge for reports ──────────────────────────────────────────── */
+    .status-badge-report {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 14px;
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+    .status-badge-report.pending   { background: rgba(234,179,8,.12);  color: #eab308; }
+    .status-badge-report.verified  { background: rgba(59,130,246,.12); color: #60a5fa; }
+    .status-badge-report.malicious { background: var(--danger-dim);    color: var(--danger); }
+    .status-badge-report.safe      { background: var(--success-dim);   color: var(--success); }
+
+    /* ── Report form card ──────────────────────────────────────────────────── */
+    .report-form-card {
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin-bottom: 18px;
+    }
+    .report-form-card label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 5px;
+      letter-spacing: .04em;
+    }
+    .report-form-card input,
+    .report-form-card textarea,
+    .report-form-card select {
+      width: 100%;
+      padding: 9px 13px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      font-family: var(--font-mono);
+      transition: border-color .2s;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    .report-form-card input:focus,
+    .report-form-card textarea:focus { outline: none; border-color: var(--accent-blue); }
+    .report-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    @media (max-width: 640px) { .report-form-row { grid-template-columns: 1fr; } }
+
+    /* ── News card ─────────────────────────────────────────────────────────── */
+    .news-card {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 14px 16px;
+      border-radius: var(--radius-sm);
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,.06);
+      border-left: 3px solid var(--accent-cyan);
+      transition: background .2s, transform .15s, border-left-color .2s;
+    }
+    .news-card:hover {
+      background: rgba(255,255,255,0.04);
+      transform: translateX(3px);
+      border-left-color: var(--accent-blue);
+    }
+    .news-card-title {
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.4;
+    }
+    .news-card-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+    .news-card-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.73rem;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+    }
+    .news-card-meta .source-pill {
+      background: rgba(45,114,212,.12);
+      color: var(--accent-blue);
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 0.68rem;
+      font-weight: 600;
+    }
+    .news-card a {
+      color: var(--accent-cyan);
+      font-size: 0.75rem;
+      text-decoration: none;
+      align-self: flex-start;
+    }
+    .news-card a:hover { text-decoration: underline; }
+
+    /* ── Advisory card ─────────────────────────────────────────────────────── */
+    .feed-card { transition: background .2s; }
+    .feed-card:hover { background: rgba(255,255,255,0.02); border-radius: var(--radius-sm); }
+
+    /* ── URL truncate ──────────────────────────────────────────────────────── */
+    .url-cell {
+      max-width: 220px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+    }
+
+    /* ── Loading skeleton ──────────────────────────────────────────────────── */
+    .skeleton {
+      background: linear-gradient(90deg, rgba(255,255,255,.04) 25%, rgba(255,255,255,.09) 50%, rgba(255,255,255,.04) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 4px;
+      height: 14px;
+    }
+    @keyframes shimmer { to { background-position: -200% 0; } }
+
+    /* ── Fade-in keyframe (if not in global.css) ───────────────────────────── */
+    @keyframes slideInUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
   </style>
 </head>
 <body>
 <div class="app-layout">
 
-  <!-- Sidebar -->
+  <!-- ══ Sidebar ══════════════════════════════════════════════════════════════ -->
   <aside class="sidebar" id="sidebar">
     <a href="{{ url_for('index') }}" class="sidebar-brand">
       <div class="sidebar-brand-icon">🛡️</div>
@@ -83,25 +279,20 @@
     <nav class="sidebar-nav">
       <span class="nav-section-label">Main</span>
       <a href="{{ url_for('index') }}" class="sidebar-link">
-        <span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
-        URL Scanner
+        <span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span>URL Scanner
       </a>
       <a href="{{ url_for('dashboard') }}" class="sidebar-link">
-        <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>
-        Dashboard
+        <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>Dashboard
       </a>
       <a href="{{ url_for('assistant') }}" class="sidebar-link active">
-        <span class="nav-icon"><i class="fa-solid fa-robot"></i></span>
-        AI Assistant
+        <span class="nav-icon"><i class="fa-solid fa-robot"></i></span>AI Assistant
       </a>
       <a href="{{ url_for('security_suite') }}" class="sidebar-link">
-        <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>
-        Security Suite
+        <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>Security Suite
       </a>
       <span class="nav-section-label">Account</span>
       <a href="{{ url_for('logout') }}" class="sidebar-link danger-link">
-        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
-        Logout
+        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>Logout
       </a>
     </nav>
     <div class="sidebar-footer">
@@ -114,6 +305,7 @@
 
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
+  <!-- ══ Main Content ══════════════════════════════════════════════════════════ -->
   <div class="main-content">
 
     <!-- Topbar -->
@@ -122,17 +314,16 @@
         <button class="sidebar-toggle" id="sidebarToggle"><i class="fa-solid fa-bars"></i></button>
         <div>
           <div class="topbar-title">AI Assistant</div>
-          <div class="topbar-breadcrumb">Threat intelligence &amp; URL analysis</div>
+          <div class="topbar-breadcrumb">Live threat intelligence &amp; URL analysis</div>
         </div>
       </div>
       <div class="topbar-right">
-        <div class="topbar-pill">
-          <div class="status-dot"></div>
+        <div class="topbar-pill" id="liveIndicator">
+          <div class="live-dot"></div>
           Live Intelligence Feed
         </div>
         <a href="{{ url_for('logout') }}" class="topbar-btn">
-          <i class="fa-solid fa-right-from-bracket"></i>
-          Logout
+          <i class="fa-solid fa-right-from-bracket"></i> Logout
         </a>
         <div class="topbar-avatar">{{ current_user.username[0].upper() }}</div>
       </div>
@@ -140,40 +331,58 @@
 
     <div class="page-body">
 
+      <!-- Page header -->
       <div class="page-header fade-in">
         <h1>AI Security Assistant</h1>
-        <p>Static URL analysis, threat intelligence feeds, and guided phishing detection insights.</p>
+        <p>Live phishing feeds, threat advisories, cybersecurity news, and community-powered reporting.</p>
       </div>
 
-      <!-- Stats row -->
-      <div class="stats-row stagger">
+      <!-- ── Stats row ──────────────────────────────────────────────────────── -->
+      <div class="stats-row stagger" id="statsRow">
         <div class="stat-card blue">
           <div class="stat-card-header">
-            <span class="stat-card-label">Pattern DB</span>
+            <span class="stat-card-label">Live Phishing DB</span>
             <div class="stat-card-icon"><i class="fa-solid fa-database"></i></div>
           </div>
-          <div class="stat-card-value">{{ top_phishing|length if top_phishing else 0 }}</div>
-          <div class="stat-card-sub">Known phishing patterns</div>
+          <div class="stat-card-value" id="stat-phishing">{{ top_phishing|length if top_phishing else 0 }}</div>
+          <div class="stat-card-sub">
+            Active phishing URLs
+            {% if feed_meta and feed_meta.phishing %}
+              <span style="color:var(--accent-cyan);font-size:0.7rem">
+                · updated {{ feed_meta.phishing }}s ago
+              </span>
+            {% endif %}
+          </div>
         </div>
         <div class="stat-card yellow">
           <div class="stat-card-header">
-            <span class="stat-card-label">Threat Alerts</span>
-            <div class="stat-card-icon"><i class="fa-solid fa-rss"></i></div>
+            <span class="stat-card-label">Threat Advisories</span>
+            <div class="stat-card-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
           </div>
-          <div class="stat-card-value">{{ threat_feed|length if threat_feed else 0 }}</div>
-          <div class="stat-card-sub">Active threat advisories</div>
+          <div class="stat-card-value" id="stat-advisories">{{ threat_feed|length if threat_feed else 0 }}</div>
+          <div class="stat-card-sub">Active threat alerts</div>
         </div>
         <div class="stat-card cyan">
           <div class="stat-card-header">
-            <span class="stat-card-label">Reports</span>
+            <span class="stat-card-label">Community Reports</span>
             <div class="stat-card-icon"><i class="fa-solid fa-flag"></i></div>
           </div>
-          <div class="stat-card-value">{{ reported_phishes|length if reported_phishes else 0 }}</div>
-          <div class="stat-card-sub">Community submissions</div>
+          <div class="stat-card-value" id="stat-reports">{{ reported_phishes|length if reported_phishes else 0 }}</div>
+          <div class="stat-card-sub">User-submitted URLs</div>
+        </div>
+        <div class="stat-card" style="border-color:rgba(168,85,247,.25)">
+          <div class="stat-card-header">
+            <span class="stat-card-label" style="color:#c084fc">Cyber News</span>
+            <div class="stat-card-icon" style="background:rgba(168,85,247,.12);color:#c084fc">
+              <i class="fa-solid fa-newspaper"></i>
+            </div>
+          </div>
+          <div class="stat-card-value" id="stat-news" style="color:#c084fc">{{ cyber_news|length if cyber_news else 0 }}</div>
+          <div class="stat-card-sub">Latest security articles</div>
         </div>
       </div>
 
-      <!-- URL Analysis -->
+      <!-- ── URL Analysis ───────────────────────────────────────────────────── -->
       <div class="content-card fade-in">
         <div class="card-head">
           <h2><i class="fa-solid fa-robot" style="margin-right:8px;color:var(--accent-cyan)"></i>Assistant URL Analysis</h2>
@@ -238,15 +447,25 @@
         </div>
       </div>
 
-      <!-- Two column: threat feed + top phishing -->
+      <!-- ── Two-column: Advisories + Phishing Patterns ─────────────────────── -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px" class="fade-in" id="twoColGrid">
 
-        <!-- Threat Feed -->
+        <!-- Active Threat Advisories -->
         <div class="content-card" style="margin-bottom:0">
           <div class="card-head">
-            <h2><i class="fa-solid fa-triangle-exclamation" style="margin-right:8px;color:var(--warning)"></i>Active Threat Advisories</h2>
+            <div class="feed-header-bar">
+              <h2><i class="fa-solid fa-triangle-exclamation" style="margin-right:8px;color:var(--warning)"></i>Active Threat Advisories</h2>
+              <div class="feed-timestamp" id="advisory-ts">
+                <div class="live-dot"></div>
+                {% if feed_meta and feed_meta.advisories %}
+                  Updated {{ feed_meta.advisories }}s ago
+                {% else %}
+                  Live
+                {% endif %}
+              </div>
+            </div>
           </div>
-          <div class="card-body" style="padding-top:12px">
+          <div class="card-body" style="padding-top:12px" id="advisoryFeed">
             {% if threat_feed %}
               {% for item in threat_feed %}
               <div class="feed-card">
@@ -255,7 +474,10 @@
                   <h4>{{ item.title }}</h4>
                   <p>{{ item.recommendation }}</p>
                   <div class="feed-meta">
-                    <span class="impact-badge {{ item.impact }}">{{ item.impact }}</span>
+                    <span class="impact-badge {{ item.impact }}">
+                      {% if item.impact == 'high' %}🔴{% elif item.impact == 'medium' %}🟡{% else %}🟢{% endif %}
+                      {{ item.impact|upper }}
+                    </span>
                     <span>{{ item.flagged_on }}</span>
                   </div>
                 </div>
@@ -271,87 +493,233 @@
           </div>
         </div>
 
-        <!-- Top Phishing Patterns -->
+        <!-- Known Phishing Patterns -->
         <div class="content-card" style="margin-bottom:0">
           <div class="card-head">
-            <h2><i class="fa-solid fa-spider" style="margin-right:8px;color:var(--danger)"></i>Known Phishing Patterns</h2>
+            <div class="feed-header-bar">
+              <h2><i class="fa-solid fa-spider" style="margin-right:8px;color:var(--danger)"></i>Live Phishing Patterns</h2>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="feed-timestamp" id="phishing-ts">
+                  <div class="live-dot"></div>
+                  {% if feed_meta and feed_meta.phishing %}Updated {{ feed_meta.phishing }}s ago{% else %}Live{% endif %}
+                </div>
+                <button class="btn-refresh" id="refreshBtn" onclick="forceRefresh()" title="Refresh all feeds">
+                  <i class="fa-solid fa-rotate"></i> Refresh
+                </button>
+              </div>
+            </div>
           </div>
           <div class="card-body" style="padding:0">
             {% if top_phishing %}
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>URL</th>
-                    <th>Reason</th>
-                    <th>Source</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for item in top_phishing[:6] %}
-                  <tr>
-                    <td class="url-cell" title="{{ item.url }}">{{ item.url }}</td>
-                    <td style="font-size:0.8rem;color:var(--text-secondary)">{{ item.reason }}</td>
-                    <td><span class="pill grey" style="font-size:0.7rem">{{ item.source }}</span></td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+            <div class="table-scroll" id="phishingTable">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>URL</th>
+                      <th>Threat Type</th>
+                      <th>Source</th>
+                      <th>Last Seen</th>
+                    </tr>
+                  </thead>
+                  <tbody id="phishingTbody">
+                    {% for item in top_phishing %}
+                    <tr>
+                      <td class="url-cell" title="{{ item.url }}">{{ item.url }}</td>
+                      <td style="font-size:0.78rem;color:var(--text-secondary)">{{ item.reason }}</td>
+                      <td>
+                        {% if item.source == 'OpenPhish' %}
+                          <span class="pill" style="background:rgba(16,185,129,.1);color:#34d399;font-size:0.68rem">OpenPhish</span>
+                        {% elif item.source == 'PhishTank' %}
+                          <span class="pill" style="background:rgba(239,68,68,.1);color:#f87171;font-size:0.68rem">PhishTank</span>
+                        {% else %}
+                          <span class="pill grey" style="font-size:0.68rem">{{ item.source }}</span>
+                        {% endif %}
+                      </td>
+                      <td style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-muted)">{{ item.last_seen }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
             </div>
             {% else %}
               <div class="empty-state" style="padding:24px">
                 <div class="empty-state-icon">🕷️</div>
-                <h3>Pattern DB loading</h3>
-                <p>No patterns available yet.</p>
+                <h3>Feed loading…</h3>
+                <p>Connecting to OpenPhish and PhishTank.</p>
               </div>
             {% endif %}
           </div>
         </div>
 
-      </div>
+      </div><!-- /twoColGrid -->
 
-      <!-- Community Reports -->
+      <!-- ── Cybersecurity News ──────────────────────────────────────────────── -->
       <div class="content-card fade-in">
         <div class="card-head">
-          <h2><i class="fa-solid fa-flag" style="margin-right:8px;color:var(--text-muted)"></i>Community Reports</h2>
+          <div class="feed-header-bar">
+            <h2>
+              <i class="fa-solid fa-newspaper" style="margin-right:8px;color:#c084fc"></i>
+              Latest Cybersecurity News
+            </h2>
+            <div class="feed-timestamp" id="news-ts">
+              <div class="live-dot" style="background:#c084fc;box-shadow:none"></div>
+              {% if feed_meta and feed_meta.news %}Updated {{ feed_meta.news }}s ago{% else %}Live{% endif %}
+              {% if not 'NEWS_API_KEY' in (environ | default({})) %}
+                <span style="color:var(--text-muted);font-style:italic">· (set NEWS_API_KEY for live feed)</span>
+              {% endif %}
+            </div>
+          </div>
         </div>
-        {% if reported_phishes %}
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr><th>URL</th><th>Reason</th><th>Reported By</th><th>Date</th></tr>
-            </thead>
-            <tbody>
-              {% for report in reported_phishes[:8] %}
-              <tr>
-                <td class="url-cell" title="{{ report.url }}">{{ report.url }}</td>
-                <td style="font-size:0.8rem;color:var(--text-secondary)">{{ report.reason }}</td>
-                <td><span class="pill blue" style="font-size:0.7rem">{{ report.user }}</span></td>
-                <td style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-muted)">{{ report.reported_on }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+        <div class="card-body" style="padding-top:14px">
+          {% if cyber_news %}
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px" id="newsFeed">
+            {% for article in cyber_news %}
+            <div class="news-card">
+              <div class="news-card-meta">
+                <span class="source-pill">{{ article.source }}</span>
+                <span>{{ article.date }}</span>
+              </div>
+              <div class="news-card-title">{{ article.title }}</div>
+              {% if article.description %}
+              <div class="news-card-desc">{{ article.description[:180] }}{% if article.description|length > 180 %}…{% endif %}</div>
+              {% endif %}
+              {% if article.url and article.url != '#' %}
+              <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer">
+                Read more <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:.65rem"></i>
+              </a>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <div class="empty-state">
+            <div class="empty-state-icon">📰</div>
+            <h3>News feed loading</h3>
+            <p>Add a <code>NEWS_API_KEY</code> to your <code>.env</code> for live articles, or the built-in simulated feed will load shortly.</p>
+          </div>
+          {% endif %}
         </div>
-        {% else %}
-        <div class="empty-state">
-          <div class="empty-state-icon">📋</div>
-          <h3>No community reports yet</h3>
-          <p>User-submitted phishing reports will appear here once the community starts flagging suspicious URLs.</p>
-        </div>
-        {% endif %}
       </div>
 
-      <footer class="app-footer">
-        © 2026 PhishGuard AI · Team Apex
-      </footer>
+      <!-- ── Community Reports ───────────────────────────────────────────────── -->
+      <div class="content-card fade-in">
+        <div class="card-head">
+          <div class="feed-header-bar">
+            <h2>
+              <i class="fa-solid fa-flag" style="margin-right:8px;color:var(--accent-cyan)"></i>
+              Community Phishing Reports
+            </h2>
+            <span style="font-size:0.78rem;color:var(--text-muted)">
+              {{ reported_phishes|length }} report{{ 's' if reported_phishes|length != 1 else '' }} submitted
+            </span>
+          </div>
+        </div>
+        <div class="card-body" style="padding-top:16px">
 
-    </div>
-  </div>
-</div>
+          <!-- Submit form -->
+          <div class="report-form-card">
+            <div style="font-size:0.85rem;font-weight:700;color:var(--text-primary);margin-bottom:14px;display:flex;align-items:center;gap:8px">
+              <i class="fa-solid fa-circle-plus" style="color:var(--accent-cyan)"></i>
+              Report a Suspicious URL
+            </div>
+            <form action="{{ url_for('assistant_report') }}" method="POST" id="reportForm">
+              <div class="report-form-row" style="margin-bottom:12px">
+                <div>
+                  <label for="report_url">Suspicious URL *</label>
+                  <input
+                    type="text"
+                    id="report_url"
+                    name="report_url"
+                    placeholder="https://suspicious-site.com"
+                    autocomplete="off"
+                    spellcheck="false"
+                    required
+                  >
+                </div>
+                <div>
+                  <label for="report_reason">Reason / Description</label>
+                  <input
+                    type="text"
+                    id="report_reason"
+                    name="report_reason"
+                    placeholder="e.g. Fake PayPal login page"
+                    autocomplete="off"
+                  >
+                </div>
+              </div>
+              <div style="display:flex;justify-content:flex-end">
+                <button type="submit" class="btn btn-primary" id="reportBtn">
+                  <i class="fa-solid fa-flag"></i> Submit Report
+                </button>
+              </div>
+            </form>
+          </div>
 
+          <!-- Reports table -->
+          {% if reported_phishes %}
+          <div class="table-scroll" id="reportsTable">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>URL</th>
+                    <th>Reason</th>
+                    <th>Reported By</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="reportsTbody">
+                  {% for report in reported_phishes %}
+                  <tr>
+                    <td style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-muted)">
+                      {{ loop.index }}
+                    </td>
+                    <td class="url-cell" title="{{ report.url }}">{{ report.url }}</td>
+                    <td style="font-size:0.78rem;color:var(--text-secondary)">{{ report.reason }}</td>
+                    <td>
+                      <span class="pill blue" style="font-size:0.68rem">{{ report.username }}</span>
+                    </td>
+                    <td>
+                      <span class="status-badge-report {{ report.status }}">
+                        {% if report.status == 'pending' %}⏳
+                        {% elif report.status == 'verified' %}✅
+                        {% elif report.status == 'malicious' %}🚨
+                        {% else %}✔{% endif %}
+                        {{ report.status }}
+                      </span>
+                    </td>
+                    <td style="font-family:var(--font-mono);font-size:0.72rem;color:var(--text-muted)">
+                      {{ report.reported_on }}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {% else %}
+          <div class="empty-state">
+            <div class="empty-state-icon">📋</div>
+            <h3>No community reports yet</h3>
+            <p>Be the first to flag a suspicious URL using the form above.</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <footer class="app-footer">© 2026 PhishGuard AI · Team Apex</footer>
+
+    </div><!-- /page-body -->
+  </div><!-- /main-content -->
+</div><!-- /app-layout -->
+
+<!-- ══ JavaScript ═══════════════════════════════════════════════════════════════ -->
 <script>
-// Sidebar toggle
+// ── Sidebar toggle ───────────────────────────────────────────────────────────
 const sidebar = document.getElementById('sidebar');
 const overlay = document.getElementById('sidebarOverlay');
 const toggle  = document.getElementById('sidebarToggle');
@@ -360,24 +728,182 @@ if (toggle) {
   overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
 }
 
-// Two-col grid responsive
+// ── Two-col grid responsive ──────────────────────────────────────────────────
 const grid = document.getElementById('twoColGrid');
 function checkGrid() {
-  if (window.innerWidth < 700) { grid.style.gridTemplateColumns = '1fr'; }
-  else { grid.style.gridTemplateColumns = '1fr 1fr'; }
+  if (grid) grid.style.gridTemplateColumns = window.innerWidth < 700 ? '1fr' : '1fr 1fr';
 }
-if (grid) { checkGrid(); window.addEventListener('resize', checkGrid); }
+checkGrid();
+window.addEventListener('resize', checkGrid);
 
-// Scan button loading state
+// ── Scan button loading state ────────────────────────────────────────────────
 const assistForm = document.getElementById('assistantForm');
 if (assistForm) {
-  assistForm.addEventListener('submit', function() {
+  assistForm.addEventListener('submit', function () {
     const btn = document.getElementById('assistBtn');
     if (btn) {
       btn.innerHTML = '<span class="spin-ring" style="width:16px;height:16px;border-width:2px"></span> Analyzing…';
       btn.style.pointerEvents = 'none';
     }
   });
+}
+
+// ── Report form loading state ────────────────────────────────────────────────
+const reportForm = document.getElementById('reportForm');
+if (reportForm) {
+  reportForm.addEventListener('submit', function () {
+    const btn = document.getElementById('reportBtn');
+    if (btn) {
+      btn.innerHTML = '<span class="spin-ring" style="width:14px;height:14px;border-width:2px"></span> Submitting…';
+      btn.style.pointerEvents = 'none';
+    }
+  });
+}
+
+// ── Live feed auto-refresh (polls /api/intelligence every 60 s) ──────────────
+let refreshInterval = null;
+let secondsElapsed  = 0;
+
+function formatAge(seconds) {
+  if (!seconds && seconds !== 0) return 'Live';
+  if (seconds < 60)  return seconds + 's ago';
+  if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+  return Math.floor(seconds / 3600) + 'h ago';
+}
+
+function updateTimestamps(meta) {
+  const now = Date.now();
+  if (meta) {
+    document.getElementById('advisory-ts').innerHTML =
+      '<div class="live-dot"></div> Updated ' + formatAge(meta.advisories);
+    document.getElementById('phishing-ts').innerHTML =
+      '<div class="live-dot"></div> Updated ' + formatAge(meta.phishing);
+    const newsTs = document.getElementById('news-ts');
+    if (newsTs) newsTs.innerHTML =
+      '<div class="live-dot" style="background:#c084fc;box-shadow:none"></div> Updated ' + formatAge(meta.news);
+  }
+}
+
+function rebuildPhishingTable(items) {
+  const tbody = document.getElementById('phishingTbody');
+  if (!tbody || !items) return;
+  tbody.innerHTML = items.map(item => {
+    const srcPill = item.source === 'OpenPhish'
+      ? `<span class="pill" style="background:rgba(16,185,129,.1);color:#34d399;font-size:.68rem">OpenPhish</span>`
+      : item.source === 'PhishTank'
+      ? `<span class="pill" style="background:rgba(239,68,68,.1);color:#f87171;font-size:.68rem">PhishTank</span>`
+      : `<span class="pill grey" style="font-size:.68rem">${item.source}</span>`;
+    return `<tr>
+      <td class="url-cell" title="${escHtml(item.url)}">${escHtml(item.url)}</td>
+      <td style="font-size:.78rem;color:var(--text-secondary)">${escHtml(item.reason)}</td>
+      <td>${srcPill}</td>
+      <td style="font-family:var(--font-mono);font-size:.72rem;color:var(--text-muted)">${escHtml(item.last_seen)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function rebuildAdvisoryFeed(items) {
+  const feed = document.getElementById('advisoryFeed');
+  if (!feed || !items) return;
+  const icons = { high: '🔴', medium: '🟡', low: '🟢' };
+  feed.innerHTML = items.map(item => `
+    <div class="feed-card">
+      <div class="feed-dot ${item.impact}"></div>
+      <div class="feed-content">
+        <h4>${escHtml(item.title)}</h4>
+        <p>${escHtml(item.recommendation)}</p>
+        <div class="feed-meta">
+          <span class="impact-badge ${item.impact}">${icons[item.impact] || ''} ${item.impact.toUpperCase()}</span>
+          <span>${item.flagged_on}</span>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function rebuildReports(items) {
+  const tbody = document.getElementById('reportsTbody');
+  if (!tbody || !items) return;
+  const statusIcons = { pending: '⏳', verified: '✅', malicious: '🚨', safe: '✔' };
+  tbody.innerHTML = items.map((r, i) => `
+    <tr>
+      <td style="font-family:var(--font-mono);font-size:.72rem;color:var(--text-muted)">${i + 1}</td>
+      <td class="url-cell" title="${escHtml(r.url)}">${escHtml(r.url)}</td>
+      <td style="font-size:.78rem;color:var(--text-secondary)">${escHtml(r.reason)}</td>
+      <td><span class="pill blue" style="font-size:.68rem">${escHtml(r.username)}</span></td>
+      <td><span class="status-badge-report ${r.status}">${statusIcons[r.status] || ''} ${r.status}</span></td>
+      <td style="font-family:var(--font-mono);font-size:.72rem;color:var(--text-muted)">${r.reported_on}</td>
+    </tr>`).join('');
+}
+
+function rebuildNews(items) {
+  const feed = document.getElementById('newsFeed');
+  if (!feed || !items) return;
+  feed.innerHTML = items.map(a => `
+    <div class="news-card">
+      <div class="news-card-meta">
+        <span class="source-pill">${escHtml(a.source)}</span>
+        <span>${a.date}</span>
+      </div>
+      <div class="news-card-title">${escHtml(a.title)}</div>
+      ${a.description ? `<div class="news-card-desc">${escHtml(a.description.slice(0, 180))}${a.description.length > 180 ? '…' : ''}</div>` : ''}
+      ${a.url && a.url !== '#' ? `<a href="${a.url}" target="_blank" rel="noopener noreferrer">Read more <i class="fa-solid fa-arrow-up-right-from-square" style="font-size:.65rem"></i></a>` : ''}
+    </div>`).join('');
+}
+
+function updateStats(stats) {
+  if (!stats) return;
+  const ph = document.getElementById('stat-phishing');
+  const ad = document.getElementById('stat-advisories');
+  const rp = document.getElementById('stat-reports');
+  const nw = document.getElementById('stat-news');
+  if (ph) ph.textContent = stats.phishing_count || 0;
+  if (ad) ad.textContent = stats.advisory_count || 0;
+  if (rp) rp.textContent = stats.report_count   || 0;
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function pollIntelligence() {
+  try {
+    const res = await fetch('/api/intelligence', { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const data = await res.json();
+    rebuildPhishingTable(data.top_phishing);
+    rebuildAdvisoryFeed(data.threat_feed);
+    rebuildReports(data.reported_phishes);
+    rebuildNews(data.cyber_news);
+    updateTimestamps(data.feed_meta);
+    updateStats(data.stats);
+    secondsElapsed = 0;
+  } catch (e) {
+    // Silently swallow network errors — user still sees SSR data
+  }
+}
+
+// Auto-refresh every 60 s
+refreshInterval = setInterval(pollIntelligence, 60000);
+
+// ── Force-refresh button ─────────────────────────────────────────────────────
+async function forceRefresh() {
+  const btn = document.getElementById('refreshBtn');
+  if (btn) { btn.classList.add('spinning'); btn.disabled = true; }
+  try {
+    await fetch('/api/refresh-feeds', { method: 'POST', credentials: 'same-origin' });
+    await pollIntelligence();
+  } catch (e) {}
+  if (btn) {
+    btn.classList.remove('spinning');
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Refreshed!';
+    setTimeout(() => { btn.innerHTML = '<i class="fa-solid fa-rotate"></i> Refresh'; }, 2000);
+  }
 }
 </script>
 </body>
