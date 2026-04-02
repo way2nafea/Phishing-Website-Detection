@@ -1,88 +1,398 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Phishing Website Detection Tool | URL Safety Checker</title>
+  <title>URL Scanner — PhishGuard AI</title>
   <meta name="description" content="Check if a website URL is safe or phishing using machine learning, Google Safe Browsing, and SSL analysis.">
   <meta name="keywords" content="phishing checker, url safety, website security, phishing detection">
   <meta name="author" content="Team Apex">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LZg1iW0K+v8GNTypL6r+HLp9Y2hQmR6wYIgBB7I3J3T3nLcaYxV7sUOz6+Qhm+8i" crossorigin="anonymous" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <style>
+    /* Pulse rings animation for scan button */
+    @keyframes scanPulse {
+      0%   { transform: scale(1); opacity: 0.8; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+    .scan-pulse-wrap {
+      position: relative;
+      display: inline-block;
+    }
+    .scan-pulse-wrap .ring {
+      position: absolute;
+      inset: 0;
+      border-radius: var(--radius-sm);
+      border: 2px solid var(--accent-blue);
+      animation: scanPulse 1.4s ease-out infinite;
+      pointer-events: none;
+      opacity: 0;
+    }
+    .scan-pulse-wrap .ring:nth-child(2) { animation-delay: 0.4s; }
+    .scan-pulse-wrap .ring:nth-child(3) { animation-delay: 0.8s; }
+    .btn-scan.scanning .ring { opacity: 1; }
+
+    /* Result card pulsing border for phishing */
+    .result-card.phishing {
+      animation: slideInUp 0.4s ease, dangerPulse 3s ease-in-out 0.5s infinite;
+    }
+    @keyframes dangerPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,69,96,0); }
+      50%       { box-shadow: 0 0 0 4px rgba(255,69,96,0.12); }
+    }
+
+    /* Scan history mini preview */
+    .recent-scans-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .recent-tag {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: var(--transition);
+      max-width: 200px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .recent-tag:hover {
+      border-color: var(--border-glow);
+      color: var(--text-primary);
+    }
+    .recent-tag .dot {
+      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+    }
+  </style>
 </head>
-<body class="bg-dark text-light">
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary">
-  <div class="container-fluid px-4">
-    <a class="navbar-brand fw-bold" href="{{ url_for('dashboard') }}"><i class="fa-solid fa-shield-halved me-2"></i>Phishing Detector</a>
-    <div class="collapse navbar-collapse" id="navbarNav">
-      <ul class="navbar-nav ms-auto d-flex gap-2 align-items-center">
-        <li class="nav-item"><a class="nav-link active" href="{{ url_for('index') }}">Scan</a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('assistant') }}">Assistant</a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ url_for('security_suite') }}">Security</a></li>
-        <li class="nav-item"><a class="btn btn-outline-light btn-sm" href="{{ url_for('logout') }}">Logout</a></li>
-      </ul>
+<body>
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <a href="{{ url_for('index') }}" class="sidebar-brand">
+      <div class="sidebar-brand-icon">🛡️</div>
+      <div class="sidebar-brand-name">
+        PhishGuard AI
+        <span>Detection System</span>
+      </div>
+    </a>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Main</span>
+      <a href="{{ url_for('index') }}" class="sidebar-link active">
+        <span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+        URL Scanner
+      </a>
+      <a href="{{ url_for('dashboard') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>
+        Dashboard
+      </a>
+      <a href="{{ url_for('assistant') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-robot"></i></span>
+        AI Assistant
+      </a>
+      <a href="{{ url_for('security_suite') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>
+        Security Suite
+      </a>
+      <span class="nav-section-label">Account</span>
+      <a href="{{ url_for('logout') }}" class="sidebar-link danger-link">
+        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
+        Logout
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        ML Engine Online
+      </div>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <div class="main-content">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="sidebar-toggle" id="sidebarToggle">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div>
+          <div class="topbar-title">URL Scanner</div>
+          <div class="topbar-breadcrumb">ML-powered phishing detection</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-pill">
+          <div class="status-dot"></div>
+          AI Model Active
+        </div>
+        <a href="{{ url_for('logout') }}" class="topbar-btn">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          Logout
+        </a>
+        <div class="topbar-avatar" title="{{ current_user.username }}">
+          {{ current_user.username[0].upper() }}
+        </div>
+      </div>
+    </header>
+
+    <div class="page-body">
+
+      <div class="page-header fade-in">
+        <h1>URL Scanner</h1>
+        <p>Analyze any URL using ML models, DNS checks, SSL verification, and Google Safe Browsing.</p>
+      </div>
+
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-list fade-in">
+            {% for category, message in messages %}
+              <div class="flash-msg {{ category }}">
+                <i class="fa-solid {{ 'fa-circle-check' if category == 'success' else 'fa-triangle-exclamation' }}"></i>
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <!-- Scan input card -->
+      <div class="scan-section fade-in" id="scanSection">
+        <div class="scan-label">
+          <i class="fa-solid fa-radar" style="color:var(--accent-cyan)"></i>
+          Target URL Analysis
+        </div>
+
+        <form action="/" method="POST" id="scanForm">
+          <div class="scan-input-row">
+            <div class="scan-input-wrap">
+              <i class="fa-solid fa-link scan-icon"></i>
+              <input
+                type="text"
+                name="url"
+                id="urlInput"
+                value="{{ url if url is defined else request.args.get('url', '') }}"
+                placeholder="https://example.com — Paste any URL to analyze"
+                required
+                autocomplete="off"
+                spellcheck="false"
+              >
+            </div>
+            <div class="scan-pulse-wrap" id="scanWrap">
+              <div class="ring"></div>
+              <div class="ring"></div>
+              <button type="submit" class="btn-scan" id="scanBtn">
+                <i class="fa-solid fa-shield-halved"></i>
+                <span id="scanBtnText">Analyze URL</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Loader -->
+          <div class="scan-loader" id="scanLoader">
+            <div class="spin-ring"></div>
+            <div>
+              <span style="color:var(--text-primary);font-weight:500">Scanning URL…</span>
+              <br>
+              <span style="font-size:0.8125rem;font-family:var(--font-mono)" id="loaderStep">Initializing security checks</span>
+            </div>
+          </div>
+        </form>
+
+        <!-- Analysis capability tags -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:18px">
+          <span class="pill blue"><i class="fa-solid fa-brain" style="margin-right:4px"></i>ML Model</span>
+          <span class="pill blue"><i class="fa-solid fa-certificate" style="margin-right:4px"></i>SSL Check</span>
+          <span class="pill blue"><i class="fa-brands fa-google" style="margin-right:4px"></i>Safe Browsing</span>
+          <span class="pill blue"><i class="fa-solid fa-server" style="margin-right:4px"></i>DNS Lookup</span>
+          <span class="pill blue"><i class="fa-solid fa-clock" style="margin-right:4px"></i>Domain Age</span>
+        </div>
+      </div>
+
+      <!-- Result Section -->
+      {% if url is defined and prediction %}
+        {% if xx == 1 %}
+          {% set result_type = 'safe' %}
+          {% set result_icon = '✅' %}
+          {% set result_text = 'Website is SAFE' %}
+        {% elif xx == 0 %}
+          {% set result_type = 'suspicious' %}
+          {% set result_icon = '⚠️' %}
+          {% set result_text = 'Website is SUSPICIOUS' %}
+        {% else %}
+          {% set result_type = 'phishing' %}
+          {% set result_icon = '🚨' %}
+          {% set result_text = 'PHISHING DETECTED' %}
+        {% endif %}
+
+        {% set score = risk_score if risk_score is not none else 0 %}
+
+        <div class="result-card {{ result_type }} fade-in" id="resultCard">
+          <div class="result-card-top">
+            <div class="result-status-icon">{{ result_icon }}</div>
+            <div class="result-verdict">
+              <div class="result-verdict-label">{{ result_text }}</div>
+              <div class="result-url">{{ url }}</div>
+            </div>
+            <div>
+              {% if xx == 1 %}
+                <span class="pill safe">SAFE</span>
+              {% elif xx == 0 %}
+                <span class="pill suspicious">SUSPICIOUS</span>
+              {% else %}
+                <span class="pill phishing">PHISHING</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="result-card-body">
+            <div class="risk-score-row">
+              <span class="risk-label-text">Risk Score</span>
+              <div class="risk-track">
+                <div class="risk-fill" id="riskFill" data-risk="{{ score }}"></div>
+              </div>
+              <span class="risk-value-text">{{ score|int }}%</span>
+            </div>
+
+            <div style="margin-top:10px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05)">
+              <p style="font-size:0.875rem;color:var(--text-secondary);line-height:1.6">
+                {{ prediction }}
+              </p>
+            </div>
+
+            {% if assistant_hint %}
+            <div class="hint-card" style="margin-top:14px">
+              <strong><i class="fa-solid fa-robot" style="margin-right:6px"></i>AI Insight:</strong>
+              {{ assistant_hint }}
+            </div>
+            {% endif %}
+
+            <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+              <a href="{{ url_for('assistant') }}?url={{ url }}" class="btn btn-cyan">
+                <i class="fa-solid fa-robot"></i> Full AI Analysis
+              </a>
+              <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
+                <i class="fa-solid fa-chart-line"></i> View Dashboard
+              </a>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- How it works -->
+      {% if not (url is defined and prediction) %}
+      <div class="content-card fade-in">
+        <div class="card-head">
+          <h2><i class="fa-solid fa-circle-info" style="margin-right:8px;color:var(--text-muted)"></i>How It Works</h2>
+        </div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
+            {% for step in [
+              ('fa-magnifying-glass','URL Analysis','Normalizes and extracts domain, path and parameter patterns from the input URL.','blue'),
+              ('fa-server','DNS & SSL','Performs DNS lookup and validates SSL certificate legitimacy and age.','cyan'),
+              ('fa-brain','ML Scoring','Machine learning model evaluates URL structure and feature patterns.','blue'),
+              ('fa-shield-halved','Final Verdict','Combines all signals to produce a risk score and clear verdict.','green')
+            ] %}
+            <div style="display:flex;gap:12px;align-items:flex-start">
+              <div class="stat-card-icon stat-card {{ step[3] }}" style="margin:0;flex-shrink:0;width:38px;height:38px">
+                <i class="fa-solid {{ step[0] }}"></i>
+              </div>
+              <div>
+                <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px;color:var(--text-primary)">{{ step[1] }}</div>
+                <div style="font-size:0.8125rem;color:var(--text-secondary);line-height:1.5">{{ step[2] }}</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <footer class="app-footer">
+        © 2026 PhishGuard AI · Team Apex · Powered by ML + Google Safe Browsing
+      </footer>
+
     </div>
   </div>
-</nav>
-<div class="container py-5">
-  <header class="text-center mb-4">
-    <h1 class="fw-bold">Website Phishing Detection</h1>
-    <p class="text-muted">Dark theme | Trustworthy insights | ML-powered risk score</p>
-  </header>
-
-  <main class="scan-box p-4 card-dark">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="result-box {% if category == 'success' %}safe-box{% else %}danger-box{% endif %} mb-3">
-            {{ message }}
-          </div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-    <form action="/" method="post" id="scanForm" class="d-flex flex-column gap-3">
-      <input type="text" class="form-control form-control-dark" name="url" value="{{ url if url is defined else request.args.get('url', '') }}" placeholder="Paste URL to analyze..." required>
-      <button type="submit" class="btn btn-success">Analyze URL</button>
-      <div id="loading" class="result-box warning-box" style="display:none; justify-content: center; border-style: dashed;">
-        <span>Analyzing security layers...</span>
-      </div>
-    </form>
-
-    {% if url and prediction %}
-    <section class="results mt-4"> ... </section>
-    {% endif %}
-
-    <p class="mt-4"><a href="{{ url_for('assistant') }}" class="btn btn-warning">AI Assistant</a></p>
-  </main>
-
-  <footer class="footer text-center text-muted mt-4">© 2026 Team Apex · Dark Theme Only</footer>
 </div>
 
 <script>
-  const scanForm = document.getElementById('scanForm');
-  if (scanForm) {
-    scanForm.addEventListener('submit', function () {
-      const btn = this.querySelector('.btn-success');
-      if (btn) {
-        btn.style.opacity = '0.7';
-        btn.innerText = 'Scanning...';
-      }
-      const loading = document.getElementById('loading');
-      if (loading) {
-        loading.style.display = 'flex';
-      }
-    });
-  }
-  const riskProgress = document.getElementById('risk-progress');
-  if (riskProgress) {
-    const value = Number(riskProgress.dataset.risk || 0);
-    riskProgress.style.width = `${Math.max(0, Math.min(100, value))}%`;
-    if (value < 30) { riskProgress.style.background = 'var(--brand-color)'; }
-    else if (value < 70) { riskProgress.style.background = 'var(--warning-color)'; }
-    else { riskProgress.style.background = 'var(--danger-color)'; }
-  }
+// Sidebar toggle
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('sidebarOverlay');
+const toggle  = document.getElementById('sidebarToggle');
+if (toggle) {
+  toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+  overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+}
+
+// Scan form — loading state + steps animation
+const scanForm = document.getElementById('scanForm');
+if (scanForm) {
+  const steps = [
+    'Initializing security checks…',
+    'Performing DNS lookup…',
+    'Validating SSL certificate…',
+    'Running ML model analysis…',
+    'Checking Google Safe Browsing…',
+    'Calculating risk score…',
+  ];
+
+  scanForm.addEventListener('submit', function() {
+    const btn  = document.getElementById('scanBtn');
+    const wrap = document.getElementById('scanWrap');
+    const loader = document.getElementById('scanLoader');
+    const stepEl = document.getElementById('loaderStep');
+    const btnText = document.getElementById('scanBtnText');
+
+    if (!document.getElementById('urlInput').value.trim()) return;
+
+    btn.classList.add('scanning');
+    wrap.classList.add('scanning');
+    btnText.textContent = 'Scanning…';
+    loader.classList.add('active');
+
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < steps.length) { stepEl.textContent = steps[i++]; }
+      else { clearInterval(interval); }
+    }, 1200);
+  });
+}
+
+// Animate risk fill bar
+const riskFill = document.getElementById('riskFill');
+if (riskFill) {
+  const value = parseFloat(riskFill.dataset.risk) || 0;
+  riskFill.style.width = '0%';
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      riskFill.style.width = Math.max(0, Math.min(100, value)) + '%';
+    }, 300);
+  });
+}
+
+// Scroll to result on load
+const resultCard = document.getElementById('resultCard');
+if (resultCard) {
+  setTimeout(() => {
+    resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 400);
+}
 </script>
 </body>
 </html>

@@ -1,120 +1,407 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Security Suite - Phishing Detector</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-dI4OMlhkQpHnnFG8FPPrV4jgxQJQJmRoYFyrFJTtmXNqpu3tB4c1C8Q4ixjhRVH1ywT5iE0gVhK1bP4NvulwIg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Suite — PhishGuard AI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <style>
+    .tool-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 900px) { .tool-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 600px) { .tool-grid { grid-template-columns: 1fr; } }
+
+    .tool-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      transition: var(--transition);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .tool-card:hover {
+      border-color: var(--border-glow);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-card);
+    }
+
+    .tool-card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .tool-icon {
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .tool-card h3 {
+      font-family: var(--font-display);
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .tool-card p.tool-desc {
+      font-size: 0.8125rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-top: -6px;
+    }
+
+    .tool-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .tool-field label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .tool-field input,
+    .tool-field textarea {
+      width: 100%;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(45,114,212,0.18);
+      border-radius: var(--radius-sm);
+      padding: 10px 13px;
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      outline: none;
+      transition: var(--transition);
+    }
+    .tool-field input::placeholder,
+    .tool-field textarea::placeholder { color: var(--text-muted); }
+    .tool-field input:focus,
+    .tool-field textarea:focus {
+      border-color: var(--accent-blue);
+      background: rgba(45,114,212,0.05);
+      box-shadow: 0 0 0 3px rgba(45,114,212,0.1);
+    }
+    .tool-field textarea { resize: vertical; min-height: 90px; font-family: var(--font-body); }
+    .tool-field input[type="file"] {
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+
+    .btn-tool {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 16px;
+      background: linear-gradient(135deg, var(--accent-blue), #1a5cbf);
+      border: none;
+      border-radius: var(--radius-sm);
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      width: 100%;
+    }
+    .btn-tool:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(45,114,212,0.35); }
+
+    /* Result block */
+    .result-entry {
+      padding: 16px 20px;
+      border-radius: var(--radius-sm);
+      margin-bottom: 12px;
+      transition: var(--transition);
+    }
+    .result-entry.safe {
+      background: var(--success-dim);
+      border: 1px solid rgba(0,229,160,0.25);
+    }
+    .result-entry.suspicious {
+      background: var(--warning-dim);
+      border: 1px solid rgba(255,176,32,0.25);
+    }
+    .result-entry.phishing {
+      background: var(--danger-dim);
+      border: 1px solid rgba(255,69,96,0.25);
+    }
+
+    .result-entry-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-family: var(--font-display);
+      margin-bottom: 6px;
+      color: var(--text-muted);
+    }
+
+    .result-entry p {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin-bottom: 4px;
+    }
+    .result-entry p strong { color: var(--text-primary); }
+  </style>
 </head>
 <body>
-  <header class="app-navbar">
-    <div class="nav-brand"><i class="fa-solid fa-shield-halved"></i> Phishing Detector</div>
-    <nav class="nav-links">
-      <a href="{{ url_for('index') }}" class="nav-link"><i class="fa-solid fa-magnifying-glass"></i> Scan</a>
-      <a href="{{ url_for('dashboard') }}" class="nav-link"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
-      <a href="{{ url_for('assistant') }}" class="nav-link"><i class="fa-solid fa-robot"></i> Assistant</a>
-      <a href="{{ url_for('security_suite') }}" class="nav-link active"><i class="fa-solid fa-lock"></i> Security</a>
-      <a href="{{ url_for('logout') }}" class="nav-link btn-ghost"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <a href="{{ url_for('index') }}" class="sidebar-brand">
+      <div class="sidebar-brand-icon">🛡️</div>
+      <div class="sidebar-brand-name">
+        PhishGuard AI
+        <span>Detection System</span>
+      </div>
+    </a>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Main</span>
+      <a href="{{ url_for('index') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+        URL Scanner
+      </a>
+      <a href="{{ url_for('dashboard') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>
+        Dashboard
+      </a>
+      <a href="{{ url_for('assistant') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-robot"></i></span>
+        AI Assistant
+      </a>
+      <a href="{{ url_for('security_suite') }}" class="sidebar-link active">
+        <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>
+        Security Suite
+      </a>
+      <span class="nav-section-label">Account</span>
+      <a href="{{ url_for('logout') }}" class="sidebar-link danger-link">
+        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
+        Logout
+      </a>
     </nav>
-  </header>
+    <div class="sidebar-footer">
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        Suite Online
+      </div>
+    </div>
+  </aside>
 
-  <main class="app-container fade-in-page">
-    <section class="dashboard-header">
-      <h1>Security Suite</h1>
-      <p class="subtext">Centralized SMS, URL and APK analysis tools in one panel.</p>
-    </section>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <section class="card-grid">
-      <article class="tool-card">
-        <h3><i class="fa-solid fa-sms"></i> SMS / Message Analyzer</h3>
-        <p class="small-info">Detect phishing attempts and malicious payloads in text messages.</p>
-        <form action="{{ url_for('sms_checker') }}" method="post" class="input-group">
-          <label for="sms-message">Suspicious message</label>
-          <textarea id="sms-message" name="message" rows="4" placeholder="Paste SMS or email text here..."></textarea>
-          <div class="actions">
-            <button class="btn btn-primary" type="submit">Analyze</button>
+  <div class="main-content">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="sidebar-toggle" id="sidebarToggle"><i class="fa-solid fa-bars"></i></button>
+        <div>
+          <div class="topbar-title">Security Suite</div>
+          <div class="topbar-breadcrumb">Multi-tool threat analysis</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-pill">
+          <div class="status-dot"></div>
+          3 Tools Active
+        </div>
+        <a href="{{ url_for('logout') }}" class="topbar-btn">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          Logout
+        </a>
+        <div class="topbar-avatar">{{ current_user.username[0].upper() }}</div>
+      </div>
+    </header>
+
+    <div class="page-body">
+
+      <div class="page-header fade-in">
+        <h1>Security Suite</h1>
+        <p>Centralized SMS, URL, and APK analysis tools — all in one place.</p>
+      </div>
+
+      <!-- Tool cards -->
+      <div class="tool-grid stagger">
+
+        <!-- SMS Analyzer -->
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-icon" style="background:rgba(45,114,212,0.15);color:var(--accent-blue)">
+              <i class="fa-solid fa-comment-sms"></i>
+            </div>
+            <h3>SMS / Message Analyzer</h3>
           </div>
-        </form>
-      </article>
+          <p class="tool-desc">Detect phishing attempts and malicious payloads embedded in text messages or emails.</p>
+          <form action="{{ url_for('sms_checker') }}" method="POST">
+            <div class="tool-field">
+              <label>Suspicious message</label>
+              <textarea name="message" placeholder="Paste SMS or email text here…"></textarea>
+            </div>
+            <br>
+            <button type="submit" class="btn-tool">
+              <i class="fa-solid fa-magnifying-glass"></i> Analyze Message
+            </button>
+          </form>
+        </div>
 
-      <article class="tool-card">
-        <h3><i class="fa-solid fa-link"></i> URL Checker</h3>
-        <p class="small-info">Test URL safety and get risk score instantly.</p>
-        <form action="{{ url_for('url_checker') }}" method="post" class="input-group">
-          <label for="security-url">URL</label>
-          <input id="security-url" type="text" name="url" placeholder="https://example.com" />
-          <div class="actions">
-            <button class="btn btn-primary" type="submit">Check</button>
+        <!-- URL Checker -->
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-icon" style="background:rgba(0,255,198,0.1);color:var(--accent-cyan)">
+              <i class="fa-solid fa-link"></i>
+            </div>
+            <h3>URL Checker</h3>
           </div>
-        </form>
-      </article>
+          <p class="tool-desc">Test URL safety and get an instant risk score with threat classification.</p>
+          <form action="{{ url_for('url_checker') }}" method="POST">
+            <div class="tool-field">
+              <label>Target URL</label>
+              <input type="text" name="url" placeholder="https://example.com">
+            </div>
+            <br>
+            <button type="submit" class="btn-tool">
+              <i class="fa-solid fa-shield-halved"></i> Check URL
+            </button>
+          </form>
+        </div>
 
-      <article class="tool-card">
-        <h3><i class="fa-solid fa-file-code"></i> APK Checker</h3>
-        <p class="small-info">Upload or URL-scan Android apps for suspicious behavior.</p>
-        <form action="{{ url_for('apk_checker') }}" method="post" enctype="multipart/form-data" class="input-group">
-          <label for="apk-url">APK download URL</label>
-          <input id="apk-url" type="text" name="apk_url" placeholder="Optional URL" />
-          <label for="apk-file">APK file</label>
-          <input id="apk-file" type="file" name="apk_file" accept=".apk" />
-          <div class="actions">
-            <button class="btn btn-primary" type="submit">Scan APK</button>
+        <!-- APK Checker -->
+        <div class="tool-card">
+          <div class="tool-card-header">
+            <div class="tool-icon" style="background:rgba(255,176,32,0.12);color:var(--warning)">
+              <i class="fa-brands fa-android"></i>
+            </div>
+            <h3>APK Scanner</h3>
           </div>
-        </form>
-      </article>
-    </section>
+          <p class="tool-desc">Upload or URL-scan Android app packages for suspicious behavior and malicious code.</p>
+          <form action="{{ url_for('apk_checker') }}" method="POST" enctype="multipart/form-data">
+            <div class="tool-field">
+              <label>APK download URL (optional)</label>
+              <input type="text" name="apk_url" placeholder="https://store.example.com/app.apk">
+            </div>
+            <div class="tool-field" style="margin-top:10px">
+              <label>Upload APK file</label>
+              <input type="file" name="apk_file" accept=".apk">
+            </div>
+            <br>
+            <button type="submit" class="btn-tool">
+              <i class="fa-solid fa-bug"></i> Scan APK
+            </button>
+          </form>
+        </div>
 
-    {% if url_result or sms_result or apk_result %}
-      <section class="table-card">
-        <h2>Recent Result</h2>
+      </div>
 
-        {% if url_result %}
-          {% set ulevel = 'low' if url_result.risk_score < 30 else 'medium' if url_result.risk_score < 70 else 'high' %}
-          <div class="result-block">
-            <p><strong>URL:</strong> {{ url_result.url }}</p>
-            <p><strong>Prediction:</strong> <span class="pill {{ 'green' if ulevel=='low' else 'yellow' if ulevel=='medium' else 'red' }}">{{ url_result.prediction }}</span> ({{ url_result.risk_score }}%)</p>
-            <p class="risk-tooltip">Reason: {{ url_result.reason if url_result.reason else 'Heuristic scoring & model confidence' }}</p>
-            <p class="small-info">Why this result? 1) Suspicious domain 2) too many redirects 3) low HTTPS trust</p>
-          </div>
-        {% endif %}
+      <!-- Results -->
+      {% if url_result or sms_result or apk_result %}
+      <div class="content-card fade-in">
+        <div class="card-head">
+          <h2><i class="fa-solid fa-clipboard-list" style="margin-right:8px;color:var(--text-muted)"></i>Analysis Results</h2>
+        </div>
+        <div class="card-body">
 
-        {% if sms_result %}
-          <div class="result-block">
-            <p><strong>SMS Status:</strong> <span class="pill {{ 'green' if sms_result.risk_score < 30 else 'yellow' if sms_result.risk_score < 70 else 'red' }}">{{ sms_result.status }}</span> ({{ sms_result.risk_score }}%)</p>
-            <p class="risk-tooltip">{{ sms_result.analysis or 'Text heuristics applied' }}</p>
-          </div>
-        {% endif %}
+          {% if url_result %}
+            {% set ulevel = 'safe' if url_result.risk_score < 30 else 'suspicious' if url_result.risk_score < 70 else 'phishing' %}
+            <div class="result-entry {{ ulevel }}">
+              <div class="result-entry-label">URL Analysis</div>
+              <p><strong>URL:</strong> <span style="font-family:var(--font-mono);font-size:0.8125rem">{{ url_result.url }}</span></p>
+              <p><strong>Prediction:</strong>
+                <span class="pill {{ 'green' if ulevel=='safe' else 'yellow' if ulevel=='suspicious' else 'red' }}">{{ url_result.prediction }}</span>
+                — Risk Score: <span style="font-family:var(--font-mono)">{{ url_result.risk_score }}%</span>
+              </p>
+              {% if url_result.reason %}
+              <p style="font-size:0.8125rem;color:var(--text-muted);margin-top:4px">{{ url_result.reason }}</p>
+              {% endif %}
+            </div>
+          {% endif %}
 
-        {% if apk_result %}
-          <div class="result-block">
-            <p><strong>APK Outcome:</strong> <span class="pill {{ 'green' if apk_result.risk_score < 30 else 'yellow' if apk_result.risk_score < 70 else 'red' }}">{{ apk_result.status }}</span> ({{ apk_result.risk_score }}%)</p>
-            <p class="risk-tooltip">{{ apk_result.analysis or 'Static APK analysis applied' }}</p>
-          </div>
-        {% endif %}
-      </section>
-    {% else %}
-      <section class="info-card" style="text-align:center;">
-        <h2>🚀 No scans yet in Security Suite</h2>
-        <p class="small-info">Run an SMS, URL, or APK check to see findings and risk suggestions.</p>
-      </section>
-    {% endif %}
+          {% if sms_result %}
+            {% set slevel = 'safe' if sms_result.risk_score < 30 else 'suspicious' if sms_result.risk_score < 70 else 'phishing' %}
+            <div class="result-entry {{ slevel }}">
+              <div class="result-entry-label">SMS / Message Analysis</div>
+              <p><strong>Status:</strong>
+                <span class="pill {{ 'green' if slevel=='safe' else 'yellow' if slevel=='suspicious' else 'red' }}">{{ sms_result.status }}</span>
+                — Risk Score: <span style="font-family:var(--font-mono)">{{ sms_result.risk_score }}%</span>
+              </p>
+              {% if sms_result.analysis %}
+              <p style="font-size:0.8125rem;color:var(--text-muted);margin-top:4px">{{ sms_result.analysis }}</p>
+              {% endif %}
+            </div>
+          {% endif %}
 
-  </main>
+          {% if apk_result %}
+            {% set alevel = 'safe' if apk_result.risk_score < 30 else 'suspicious' if apk_result.risk_score < 70 else 'phishing' %}
+            <div class="result-entry {{ alevel }}">
+              <div class="result-entry-label">APK Scan</div>
+              <p><strong>Outcome:</strong>
+                <span class="pill {{ 'green' if alevel=='safe' else 'yellow' if alevel=='suspicious' else 'red' }}">{{ apk_result.status }}</span>
+                — Risk Score: <span style="font-family:var(--font-mono)">{{ apk_result.risk_score }}%</span>
+              </p>
+              {% if apk_result.analysis %}
+              <p style="font-size:0.8125rem;color:var(--text-muted);margin-top:4px">{{ apk_result.analysis }}</p>
+              {% endif %}
+            </div>
+          {% endif %}
 
-  <footer class="footer">© 2026 Team Apex | Cybersecurity Project</footer>
+        </div>
+      </div>
+      {% else %}
+      <div class="content-card fade-in">
+        <div class="empty-state">
+          <div class="empty-state-icon">🔍</div>
+          <h3>No scans yet in Security Suite</h3>
+          <p>Run an SMS analysis, URL check, or APK scan above to see findings and risk assessments here.</p>
+        </div>
+      </div>
+      {% endif %}
 
-  <script>
-    document.addEventListener('submit', function(evt) {
-      const button = evt.target.querySelector('button[type="submit"]');
-      if (button) {
-        button.disabled = true;
-        const originalText = button.innerHTML;
-        button.innerHTML = '<span class="loader"></span> Analyzing...';
-        setTimeout(() => { button.innerHTML = originalText; button.disabled = false; }, 12000);
-      }
-    });
-  </script>
+      <footer class="app-footer">
+        © 2026 PhishGuard AI · Team Apex
+      </footer>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// Sidebar toggle
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('sidebarOverlay');
+const toggle  = document.getElementById('sidebarToggle');
+if (toggle) {
+  toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+  overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+}
+
+// Loading state on form submit
+document.querySelectorAll('.tool-card form').forEach(form => {
+  form.addEventListener('submit', function() {
+    const btn = this.querySelector('.btn-tool');
+    if (btn) {
+      btn.innerHTML = '<span class="spin-ring" style="width:15px;height:15px;border-width:2px"></span> Analyzing…';
+      btn.style.pointerEvents = 'none';
+    }
+  });
+});
+</script>
 </body>
 </html>

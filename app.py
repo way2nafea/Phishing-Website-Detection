@@ -7,6 +7,11 @@ import json
 import datetime
 import numpy as np
 
+
+
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask_login import (
     LoginManager,
     login_user,
@@ -17,9 +22,9 @@ from flask_login import (
 
 from flask_bcrypt import Bcrypt
 
-# OAuth support
+# OAuth support — Google only
 from flask_dance.contrib.google import make_google_blueprint, google
-from flask_dance.contrib.facebook import make_facebook_blueprint, facebook
+from flask_dance.consumer import oauth_authorized, oauth_error
 
 import importlib
 
@@ -81,22 +86,93 @@ login_manager.login_view = "login"
 # Allow local dev over http for OAuth (remove in production)
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
-# OAuth configuration (set these in env vars)
+# ─── Google OAuth Configuration ───────────────────────────────────────────────
+# Required env vars:
+#   GOOGLE_OAUTH_CLIENT_ID     → your Google OAuth 2.0 Client ID
+#   GOOGLE_OAUTH_CLIENT_SECRET → your Google OAuth 2.0 Client Secret
+#
+# In Google Cloud Console → APIs & Credentials → OAuth 2.0 Client IDs
+# Add this Authorized Redirect URI:
+#   http://127.0.0.1:10000/login/google/authorized   ← local dev
+#   https://yourdomain.com/login/google/authorized   ← production
+# ──────────────────────────────────────────────────────────────────────────────
+_google_client_id     = os.environ.get('GOOGLE_OAUTH_CLIENT_ID',     '').strip()
+_google_client_secret = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET', '').strip()
+
+if not _google_client_id or not _google_client_secret:
+    import warnings
+    warnings.warn(
+        "\n\n"
+        "  ⚠️  GOOGLE OAUTH NOT CONFIGURED\n"
+        "  Set the following environment variables before running:\n"
+        "    GOOGLE_OAUTH_CLIENT_ID=<your-client-id>\n"
+        "    GOOGLE_OAUTH_CLIENT_SECRET=<your-client-secret>\n"
+        "  Google login will be disabled until these are set.\n",
+        stacklevel=2
+    )
+
 google_blueprint = make_google_blueprint(
-    client_id=os.environ.get('GOOGLE_OAUTH_CLIENT_ID', ''),
-    client_secret=os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET', ''),
-    scope=['profile', 'email'],
-    redirect_url='/login/google/callback'
-)
-facebook_blueprint = make_facebook_blueprint(
-    client_id=os.environ.get('FACEBOOK_OAUTH_CLIENT_ID', ''),
-    client_secret=os.environ.get('FACEBOOK_OAUTH_CLIENT_SECRET', ''),
-    scope=['email'],
-    redirect_url='/login/facebook/callback'
+    client_id=_google_client_id or None,       # None disables the blueprint gracefully
+    client_secret=_google_client_secret or None,
+    scope=[
+        "openid",
+        "https://www.googleapis.com/auth/userinfo.email",
+        "https://www.googleapis.com/auth/userinfo.profile",
+    ],
+    # NOTE: Do NOT pass redirect_url here.
+    # Flask-Dance automatically handles the callback at:
+    #   /login/google/authorized  (with url_prefix='/login' below)
+    # Register THAT exact URL in your Google Cloud Console.
 )
 
 app.register_blueprint(google_blueprint, url_prefix='/login')
-app.register_blueprint(facebook_blueprint, url_prefix='/login')
+
+
+# ─── Google OAuth Signal Handler ──────────────────────────────────────────────
+# This fires AFTER Flask-Dance completes the token exchange with Google.
+# It is the correct, conflict-free way to handle post-auth logic.
+# ──────────────────────────────────────────────────────────────────────────────
+@oauth_authorized.connect_via(google_blueprint)
+def google_logged_in(blueprint, token):
+    if not token:
+        flash("Google login failed: no token received. Please try again.", "danger")
+        return False
+
+    resp = blueprint.session.get("/oauth2/v2/userinfo")
+    if not resp.ok:
+        flash("Google login failed: could not retrieve your profile. Please try again.", "danger")
+        return False
+
+    info  = resp.json()
+    email = info.get("email")
+    name  = info.get("name") or (email.split("@")[0] if email else "User")
+
+    if not email:
+        flash("Your Google account does not have a verified email address.", "danger")
+        return False
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        user = User(
+            username=name,
+            email=email,
+            password=bcrypt.generate_password_hash(os.urandom(24)).decode("utf-8"),
+        )
+        db.session.add(user)
+        db.session.commit()
+
+    login_user(user)
+    flash("Logged in with Google successfully.", "success")
+
+    # Return False so Flask-Dance does NOT try to save the token to a DB session
+    # (we only use it transiently to fetch user info).
+    return False
+
+
+@oauth_error.connect_via(google_blueprint)
+def google_error(blueprint, message, response):
+    """Catches errors returned by Google during the OAuth flow."""
+    flash(f"Google OAuth error: {message}", "danger")
 
 
 @login_manager.user_loader
@@ -275,24 +351,302 @@ def analyze_message_text(message):
 
 
 def analyze_apk(apk_url=None, apk_file=None):
+    """
+    Heuristic-based APK analyser.
+    Handles both URL submissions and direct file uploads.
+    Returns a structured result compatible with security-suite.html.
+    """
+    import re
+    import zipfile
+    import io
+
+    # ── Keyword lists ──────────────────────────────────────────────────────────
+    MALICIOUS_URL_KEYWORDS = [
+        "mod", "hack", "crack", "premium", "free", "unlocked",
+        "cheat", "keygen", "patch", "nulled", "warez", "pirate",
+        "apkpure-mod", "happymod", "revdl", "rexdl",
+    ]
+    SUSPICIOUS_URL_KEYWORDS = [
+        "apk", "download", "install", "android", "update",
+        "latest", "new", "version", "setup",
+    ]
+    DANGEROUS_PERMISSIONS = [
+        "READ_SMS", "SEND_SMS", "RECEIVE_SMS",
+        "READ_CALL_LOG", "PROCESS_OUTGOING_CALLS",
+        "READ_CONTACTS", "WRITE_CONTACTS",
+        "ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION",
+        "CAMERA", "RECORD_AUDIO",
+        "READ_EXTERNAL_STORAGE", "WRITE_EXTERNAL_STORAGE",
+        "INSTALL_PACKAGES", "REQUEST_INSTALL_PACKAGES",
+        "BIND_DEVICE_ADMIN", "RECEIVE_BOOT_COMPLETED",
+        "SYSTEM_ALERT_WINDOW", "DISABLE_KEYGUARD",
+        "USE_CREDENTIALS", "MANAGE_ACCOUNTS",
+        "GET_ACCOUNTS", "AUTHENTICATE_ACCOUNTS",
+        "BIND_ACCESSIBILITY_SERVICE",
+    ]
+    SUSPICIOUS_PERMISSIONS = [
+        "INTERNET", "CHANGE_NETWORK_STATE",
+        "ACCESS_WIFI_STATE", "CHANGE_WIFI_STATE",
+        "VIBRATE", "WAKE_LOCK",
+        "FOREGROUND_SERVICE", "RECEIVE_WAP_PUSH",
+        "READ_PHONE_STATE", "USE_BIOMETRIC",
+    ]
+
+    # ── Bootstrap report ──────────────────────────────────────────────────────
     report = {
-        "apk_url": apk_url,
-        "status": "NOT_SCANNED",
+        "apk_url":    apk_url   or "",
+        "apk_file":   (apk_file.filename if apk_file and apk_file.filename else ""),
+        "status":     "NOT_SCANNED",
         "risk_score": 0,
-        "details": [],
+        "details":    [],
     }
 
-    if apk_file and apk_file.filename:
-        report["status"] = "UNSUPPORTED"
-        report["details"].append("APK upload scanning is not implemented in this MVP.")
-    elif apk_url:
-        report["status"] = "UNSUPPORTED"
-        report["details"].append("APK URL scanning integration can be added with VirusTotal API.")
-    else:
-        report["status"] = "INVALID"
-        report["details"].append("No APK file or URL provided.")
+    risk  = 0
+    notes = []
 
-    return report
+    # ── Helper: derive final status from risk score ────────────────────────────
+    def _finalise(risk_score, notes):
+        risk_score = max(0, min(100, risk_score))
+        if risk_score >= 70:
+            status = "PHISHING"
+        elif risk_score >= 40:
+            status = "SUSPICIOUS"
+        else:
+            status = "SAFE"
+        return {"status": status, "risk_score": risk_score, "details": notes}
+
+    # ═════════════════════════════════════════════════════════════════════════
+    #  BRANCH A — APK URL analysis
+    # ═════════════════════════════════════════════════════════════════════════
+    if apk_url and apk_url.strip():
+        url_lower = apk_url.lower().strip()
+
+        # 1. Protocol check
+        if url_lower.startswith("http://"):
+            risk += 20
+            notes.append("🔓 Insecure protocol (HTTP): APK served without encryption.")
+        elif url_lower.startswith("https://"):
+            notes.append("🔒 Secure protocol (HTTPS): connection is encrypted.")
+        else:
+            risk += 15
+            notes.append("⚠️ Unrecognised protocol in URL.")
+
+        # 2. Malicious keyword scan
+        hit_malicious = [kw for kw in MALICIOUS_URL_KEYWORDS if kw in url_lower]
+        if hit_malicious:
+            risk += 50
+            notes.append(
+                f"🚨 High-risk keywords detected in URL: {', '.join(hit_malicious)}. "
+                "These are strongly associated with pirated/trojanised APKs."
+            )
+
+        # 3. Suspicious keyword scan (only if not already flagged malicious)
+        if not hit_malicious:
+            hit_suspicious = [kw for kw in SUSPICIOUS_URL_KEYWORDS if kw in url_lower]
+            if hit_suspicious:
+                risk += 15
+                notes.append(
+                    f"⚠️ Suspicious keywords found in URL: {', '.join(hit_suspicious)}."
+                )
+
+        # 4. File extension check
+        if not url_lower.endswith(".apk"):
+            risk += 10
+            notes.append("⚠️ URL does not end with .apk — the file type cannot be confirmed.")
+        else:
+            notes.append("✅ URL ends with .apk extension.")
+
+        # 5. IP-address host check
+        ip_pattern = re.compile(
+            r"https?://(\d{1,3}\.){3}\d{1,3}",
+            re.IGNORECASE
+        )
+        if ip_pattern.match(url_lower):
+            risk += 25
+            notes.append("🚨 APK is hosted on a raw IP address — no domain identity, very high risk.")
+
+        # 6. Excessive subdomain check
+        try:
+            host = re.split(r"https?://", url_lower)[1].split("/")[0]
+            subdomain_count = host.count(".")
+            if subdomain_count >= 3:
+                risk += 10
+                notes.append(
+                    f"⚠️ Excessive subdomain depth ({subdomain_count} dots) — "
+                    "common in phishing distribution infrastructure."
+                )
+        except Exception:
+            pass
+
+        # 7. Long URL check
+        if len(apk_url) > 120:
+            risk += 10
+            notes.append("⚠️ Unusually long URL — obfuscation technique commonly used in phishing links.")
+
+        # 8. Summary note
+        notes.append(
+            "ℹ️ Analysis performed via heuristic URL inspection. "
+            "For deeper analysis, upload the APK file directly."
+        )
+
+        result = _finalise(risk, notes)
+        result["apk_url"]  = apk_url
+        result["apk_file"] = ""
+        return result
+
+    # ═════════════════════════════════════════════════════════════════════════
+    #  BRANCH B — APK file upload analysis
+    # ═════════════════════════════════════════════════════════════════════════
+    elif apk_file and apk_file.filename:
+        filename    = apk_file.filename
+        fname_lower = filename.lower()
+
+        # 1. Extension validation
+        if not fname_lower.endswith(".apk"):
+            risk += 30
+            notes.append(f"🚨 Uploaded file '{filename}' is NOT an .apk file.")
+        else:
+            notes.append(f"✅ File extension confirmed: {filename}")
+
+        # 2. Filename keyword scan
+        hit_fname = [kw for kw in MALICIOUS_URL_KEYWORDS if kw in fname_lower]
+        if hit_fname:
+            risk += 40
+            notes.append(
+                f"🚨 Malicious keywords in filename: {', '.join(hit_fname)}. "
+                "Strongly associated with repackaged/trojanised APKs."
+            )
+
+        # 3. File size check
+        apk_file.seek(0, 2)          # seek to end
+        file_size_mb = apk_file.tell() / (1024 * 1024)
+        apk_file.seek(0)             # rewind
+
+        if file_size_mb < 0.1:
+            risk += 20
+            notes.append(
+                f"⚠️ File is very small ({file_size_mb:.2f} MB) — "
+                "legitimate apps are rarely this small; may be a stub/dropper."
+            )
+        elif file_size_mb > 150:
+            risk += 10
+            notes.append(
+                f"⚠️ File is very large ({file_size_mb:.2f} MB) — "
+                "could indicate bundled malicious payloads."
+            )
+        else:
+            notes.append(f"✅ File size looks normal ({file_size_mb:.2f} MB).")
+
+        # 4. ZIP/APK structure + manifest analysis
+        raw_bytes = apk_file.read()
+        apk_file.seek(0)
+
+        try:
+            with zipfile.ZipFile(io.BytesIO(raw_bytes)) as zf:
+                namelist = zf.namelist()
+
+                # 4a. Mandatory APK entries
+                if "AndroidManifest.xml" not in namelist:
+                    risk += 35
+                    notes.append("🚨 AndroidManifest.xml missing — not a valid APK or deliberately stripped.")
+                else:
+                    notes.append("✅ AndroidManifest.xml present.")
+
+                has_dex = any(n.endswith(".dex") for n in namelist)
+                if not has_dex:
+                    risk += 20
+                    notes.append("⚠️ No .dex (Dalvik bytecode) file found — unusual for a real Android app.")
+                else:
+                    dex_count = sum(1 for n in namelist if n.endswith(".dex"))
+                    if dex_count > 3:
+                        risk += 15
+                        notes.append(
+                            f"⚠️ {dex_count} .dex files detected — "
+                            "multi-dex is legitimate but also used by sophisticated malware."
+                        )
+                    else:
+                        notes.append(f"✅ {dex_count} .dex bytecode file(s) found.")
+
+                # 4b. Suspicious native libraries
+                native_libs = [n for n in namelist if n.endswith(".so")]
+                if native_libs:
+                    notes.append(
+                        f"ℹ️ {len(native_libs)} native library/libraries (.so) found — "
+                        "normal for many apps but worth noting."
+                    )
+
+                # 4c. Hidden / double-extension files
+                double_ext = [
+                    n for n in namelist
+                    if re.search(r"\.(jpg|png|gif|mp4|pdf)\.(apk|dex|so|jar)$", n, re.IGNORECASE)
+                ]
+                if double_ext:
+                    risk += 30
+                    notes.append(
+                        f"🚨 Double-extension files detected: {double_ext[:3]} — "
+                        "classic technique to disguise malicious payloads as media files."
+                    )
+
+                # 4d. Raw manifest permission scan (binary heuristic)
+                try:
+                    manifest_bytes = zf.read("AndroidManifest.xml").decode("latin-1")
+                    found_dangerous = [p for p in DANGEROUS_PERMISSIONS if p in manifest_bytes]
+                    found_suspicious = [p for p in SUSPICIOUS_PERMISSIONS if p in manifest_bytes]
+
+                    if found_dangerous:
+                        risk += min(40, len(found_dangerous) * 5)
+                        notes.append(
+                            f"🚨 {len(found_dangerous)} high-risk permission(s) detected: "
+                            f"{', '.join(found_dangerous[:8])}"
+                            + (" …and more." if len(found_dangerous) > 8 else ".")
+                        )
+                    else:
+                        notes.append("✅ No high-risk permissions detected in manifest.")
+
+                    if found_suspicious:
+                        risk += min(15, len(found_suspicious) * 3)
+                        notes.append(
+                            f"⚠️ {len(found_suspicious)} notable permission(s): "
+                            f"{', '.join(found_suspicious[:6])}"
+                            + (" …and more." if len(found_suspicious) > 6 else ".")
+                        )
+                except Exception:
+                    notes.append(
+                        "ℹ️ Manifest is binary-encoded (AXML); "
+                        "deep permission parsing skipped — use a decompiler for full audit."
+                    )
+
+                # 4e. Entry count
+                notes.append(f"ℹ️ APK archive contains {len(namelist)} total entries.")
+
+        except zipfile.BadZipFile:
+            risk += 40
+            notes.append("🚨 File is not a valid ZIP/APK archive — corrupted or disguised malware.")
+        except Exception as exc:
+            notes.append(f"ℹ️ Archive inspection error: {exc}")
+
+        # 5. Closing note
+        notes.append(
+            "ℹ️ Static heuristic analysis complete. "
+            "For definitive results, decompile with jadx/apktool and review source manually."
+        )
+
+        result = _finalise(risk, notes)
+        result["apk_url"]  = ""
+        result["apk_file"] = filename
+        return result
+
+    # ═════════════════════════════════════════════════════════════════════════
+    #  BRANCH C — Nothing provided
+    # ═════════════════════════════════════════════════════════════════════════
+    else:
+        return {
+            "apk_url":    "",
+            "apk_file":   "",
+            "status":     "INVALID",
+            "risk_score": 0,
+            "details":    ["❌ No APK file or URL was provided. Please submit one to begin analysis."],
+        }
 
 
 def run_url_scan(raw_url):
@@ -486,7 +840,6 @@ def url_checker():
     url = request.form.get("url", "")
     url_result = run_url_scan(url)
 
-    # Save scan result to history with risk score
     new_scan = Scan(
         url=url,
         risk_score=url_result.get("risk_score") or 0,
@@ -517,121 +870,6 @@ def apk_checker():
 def index():
     return redirect(url_for("security_suite"))
 
-    # Legacy checker logic below is skipped by early return.
-
-    assistant_hint = None
-    query_url = request.args.get("url")
-    if request.method == "GET" and query_url:
-        assistant_hint = assistant_suggestion(query_url)
-
-    if request.method == "POST":
-
-        raw_url = request.form.get("url")
-        url = normalize_url(raw_url)
-        domain = get_domain(url)
-
-        risk_score = 0
-        prediction = ""
-        xx = 0
-
-        # =============================
-        # HARD SECURITY CHECKS
-        # =============================
-
-        if contains_ip(domain):
-            prediction = "⚠️ Website uses IP address instead of domain (High Risk)"
-            risk_score = 90
-            xx = -1
-
-        elif not dns_lookup(domain):
-            prediction = "⚠️ Domain does NOT exist (DNS validation failed)"
-            risk_score = 95
-            xx = -1
-
-        elif check_google_safe_browsing(url):
-            prediction = "🚨 Google Safe Browsing flagged this URL as dangerous"
-            risk_score = 98
-            xx = -1
-
-        else:
-            age = get_domain_age(domain)
-
-            if age and age < 30:
-                prediction = f"⚠️ Domain is very new ({age} days old) - High Risk"
-                risk_score = 75
-                xx = -1
-
-            elif not check_ssl(domain):
-                prediction = "⚠️ Invalid or missing SSL certificate"
-                risk_score = 60
-                xx = 0
-
-            elif domain in TRUSTED_DOMAINS:
-                prediction = "Website appears SAFE (99.00% confidence)"
-                risk_score = 5
-                xx = 1
-
-            elif is_similar_to_trusted(domain):
-                prediction = "⚠️ Domain looks similar to trusted site (Possible Spoofing)"
-                risk_score = 70
-                xx = 0
-
-            elif suspicious_structure(domain):
-                prediction = "⚠️ URL contains suspicious keywords or structure"
-                risk_score = 65
-                xx = 0
-
-            else:
-                # =============================
-                # ML PREDICTION
-                # =============================
-                phishing_prob, legit_prob = model.predict(url)
-
-                # If ML confidence weak → use DL (optional)
-                if 40 <= legit_prob <= 60 and dl_model:
-                    print("🔬 ML Confidence Weak → Using DL Model")
-                    # NOTE: Only works if you extract numeric features properly
-                    # For now we skip DL unless you build feature extractor
-                    # dl_result = dl_predict(features)
-
-                risk_score = phishing_prob
-
-                if legit_prob >= 70:
-                    prediction = f"Website appears SAFE ({legit_prob:.2f}% confidence)"
-                    xx = 1
-
-                elif 50 <= legit_prob < 70:
-                    prediction = f"Website looks SUSPICIOUS ({legit_prob:.2f}% confidence)"
-                    xx = 0
-
-                else:
-                    prediction = f"Website is likely PHISHING ({phishing_prob:.2f}% risk)"
-                    xx = -1
-
-        # =============================
-        # SAVE SCAN
-        # =============================
-        new_scan = Scan(
-            url=raw_url,
-            risk_score=risk_score,
-            result=prediction,
-            user_id=current_user.id
-        )
-
-        db.session.add(new_scan)
-        db.session.commit()
-
-        return render_template(
-            "index.html",
-            prediction=prediction,
-            url=raw_url,
-            xx=xx,
-            risk_score=risk_score,
-            assistant_hint=assistant_hint
-        )
-
-    return render_template("index.html", assistant_hint=assistant_hint)
-
 
 # =============================
 # REGISTER
@@ -642,7 +880,7 @@ def register():
     if request.method == "POST":
 
         username = request.form.get("username")
-        email = request.form.get("email")
+        email    = request.form.get("email")
         password = request.form.get("password")
 
         existing_user = User.query.filter_by(email=email).first()
@@ -672,10 +910,12 @@ def register():
 # =============================
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    # Warn if Google OAuth env vars are missing so it shows in the UI
+    google_configured = bool(_google_client_id and _google_client_secret)
 
     if request.method == "POST":
 
-        email = request.form.get("email")
+        email    = request.form.get("email")
         password = request.form.get("password")
 
         user = User.query.filter_by(email=email).first()
@@ -687,65 +927,23 @@ def login():
 
         flash("Invalid email or password.", "danger")
 
-    return render_template("login.html")
+    return render_template("login.html", google_configured=google_configured)
 
 
-@app.route('/login/google')
-def login_google():
-    if not google.authorized:
-        return redirect(url_for('google.login'))
-
-    resp = google.get('/oauth2/v2/userinfo')
-    if not resp.ok:
-        flash('Google login failed. Please try again.', 'danger')
-        return redirect(url_for('login'))
-
-    info = resp.json()
-    email = info.get('email')
-    name = info.get('name') or email.split('@')[0]
-
-    if not email:
-        flash('Google account does not provide an email address.', 'danger')
-        return redirect(url_for('login'))
-
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        user = User(username=name, email=email, password=bcrypt.generate_password_hash(os.urandom(24)).decode('utf-8'))
-        db.session.add(user)
-        db.session.commit()
-
-    login_user(user)
-    flash('Logged in with Google successfully.', 'success')
-    return redirect(url_for('assistant'))
-
-
-@app.route('/login/facebook')
-def login_facebook():
-    if not facebook.authorized:
-        return redirect(url_for('facebook.login'))
-
-    resp = facebook.get('/me?fields=id,name,email')
-    if not resp.ok:
-        flash('Facebook login failed. Please try again.', 'danger')
-        return redirect(url_for('login'))
-
-    info = resp.json()
-    email = info.get('email')
-    name = info.get('name') or email.split('@')[0] if email else 'FacebookUser'
-
-    if not email:
-        flash('Facebook account does not provide an email address.', 'danger')
-        return redirect(url_for('login'))
-
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        user = User(username=name, email=email, password=bcrypt.generate_password_hash(os.urandom(24)).decode('utf-8'))
-        db.session.add(user)
-        db.session.commit()
-
-    login_user(user)
-    flash('Logged in with Facebook successfully.', 'success')
-    return redirect(url_for('assistant'))
+# ─── NOTE: There is NO custom @app.route('/login/google') here.
+# Flask-Dance already registers /login/google as the OAuth initiation route
+# when the blueprint is registered with url_prefix='/login'.
+# Defining a second route at the same path would cause a Flask routing conflict
+# and is one of the root causes of the "Missing required parameter: client_id" error.
+#
+# The full Google OAuth flow:
+#   1. User clicks "Sign in with Google" → links to url_for('google.login')
+#      which resolves to /login/google
+#   2. Flask-Dance redirects to Google's consent screen
+#   3. Google redirects back to /login/google/authorized
+#   4. Flask-Dance exchanges the code for a token
+#   5. The @oauth_authorized signal fires → google_logged_in() above runs
+#   6. User is logged in and redirected to /assistant
 
 
 # =============================
@@ -780,7 +978,6 @@ def reset_password():
             flash('Please enter your email address.', 'danger')
             return redirect(url_for('reset_password'))
 
-        # In a real app you would generate and send a reset link to the email.
         flash('If this email exists in our system, a password reset link has been sent.', 'success')
         return redirect(url_for('login'))
 
@@ -788,15 +985,15 @@ def reset_password():
 
 
 # =============================
-# SOCIAL LOGIN PLACEHOLDER
+# SOCIAL LOGIN — Google only
+# =============================
 @app.route('/auth/<provider>')
 def social_login(provider):
-    provider_name = provider.capitalize()
-    if provider not in ['google', 'facebook']:
-        flash('Unsupported social login provider', 'danger')
-        return redirect(url_for('login'))
+    """Fallback route; real Google login goes through Flask-Dance at /login/google."""
+    if provider == 'google':
+        return redirect(url_for('google.login'))
 
-    flash(f'{provider_name} login is currently a placeholder in this demo. Integration with OAuth is required.', 'info')
+    flash('Unsupported login provider.', 'danger')
     return redirect(url_for('login'))
 
 

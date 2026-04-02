@@ -1,113 +1,368 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard - Phishing Detector</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-dI4OMlhkQpHnnFG8FPPrV4jgxQJQJmRoYFyrFJTtmXNqpu3tB4c1C8Q4ixjhRVH1ywT5iE0gVhK1bP4NvulwIg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — PhishGuard AI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <style>
+    /* Mini chart placeholder */
+    .chart-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 700px) { .chart-row { grid-template-columns: 1fr; } }
+
+    .mini-gauge {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mini-gauge svg { transform: rotate(-90deg); }
+    .gauge-text {
+      position: absolute;
+      text-align: center;
+    }
+    .gauge-text .gauge-val {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .gauge-text .gauge-sub {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .table-id-cell {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+    .risk-tooltip { display: none; }
+  </style>
 </head>
 <body>
-  <header class="app-navbar">
-    <div class="nav-brand"><i class="fa-solid fa-shield-halved"></i> Phishing Detector</div>
-    <nav class="nav-links">
-      <a href="{{ url_for('index') }}" class="nav-link"><i class="fa-solid fa-magnifying-glass"></i> Scan</a>
-      <a href="{{ url_for('dashboard') }}" class="nav-link active"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
-      <a href="{{ url_for('assistant') }}" class="nav-link"><i class="fa-solid fa-robot"></i> Assistant</a>
-      <a href="{{ url_for('security_suite') }}" class="nav-link"><i class="fa-solid fa-lock"></i> Security</a>
-      <a href="{{ url_for('logout') }}" class="nav-link btn-ghost"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <a href="{{ url_for('index') }}" class="sidebar-brand">
+      <div class="sidebar-brand-icon">🛡️</div>
+      <div class="sidebar-brand-name">
+        PhishGuard AI
+        <span>Detection System</span>
+      </div>
+    </a>
+
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Main</span>
+
+      <a href="{{ url_for('index') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+        URL Scanner
+      </a>
+
+      <a href="{{ url_for('dashboard') }}" class="sidebar-link active">
+        <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>
+        Dashboard
+      </a>
+
+      <a href="{{ url_for('assistant') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-robot"></i></span>
+        AI Assistant
+      </a>
+
+      <a href="{{ url_for('security_suite') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>
+        Security Suite
+      </a>
+
+      <span class="nav-section-label">Account</span>
+
+      <a href="{{ url_for('logout') }}" class="sidebar-link danger-link">
+        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
+        Logout
+      </a>
     </nav>
-  </header>
 
-  <main class="app-container fade-in-page">
-    <section class="dashboard-header">
-      <h1>Dashboard</h1>
-      <p class="subtext">Overview of phishing scan activity and risk trends</p>
-    </section>
+    <div class="sidebar-footer">
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        Engine Online
+      </div>
+    </div>
+  </aside>
 
-    <section class="card-grid">
-      <article class="stat-card">
-        <h3><i class="fa-solid fa-shield-virus"></i> Total Scans</h3>
-        <p class="stat-value">{{ scans|length if scans else 0 }}</p>
-      </article>
-      <article class="stat-card">
-        <h3><i class="fa-solid fa-circle-check"></i> Safe URLs</h3>
-        <p class="stat-value">{{ scans|selectattr('risk_score','lt',30)|list|length if scans else 0 }}</p>
-      </article>
-      <article class="stat-card">
-        <h3><i class="fa-solid fa-exclamation-triangle"></i> Phishing URLs</h3>
-        <p class="stat-value">{{ scans|selectattr('risk_score','ge',70)|list|length if scans else 0 }}</p>
-      </article>
-    </section>
+  <!-- Sidebar overlay (mobile) -->
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    {% if scans %}
-      <section class="table-card">
-        <h2>Scan History</h2>
+  <!-- Main area -->
+  <div class="main-content">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div>
+          <div class="topbar-title">Dashboard</div>
+          <div class="topbar-breadcrumb">Scan history &amp; risk overview</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-pill">
+          <div class="status-dot"></div>
+          All Systems Operational
+        </div>
+        <a href="{{ url_for('logout') }}" class="topbar-btn">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          Logout
+        </a>
+        <div class="topbar-avatar" title="{{ current_user.username }}">
+          {{ current_user.username[0].upper() }}
+        </div>
+      </div>
+    </header>
+
+    <!-- Page body -->
+    <div class="page-body">
+
+      <!-- Page header -->
+      <div class="page-header fade-in">
+        <h1>Security Dashboard</h1>
+        <p>Welcome back, <strong style="color:var(--accent-cyan)">{{ current_user.username }}</strong> — Here's your threat intelligence overview.</p>
+      </div>
+
+      <!-- Stats row -->
+      {% set total = scans|length if scans else 0 %}
+      {% set safe_count = scans|selectattr('risk_score','lt',30)|list|length if scans else 0 %}
+      {% set suspicious_count = scans|selectattr('risk_score','ge',30)|list|length if scans else 0 %}
+      {% set phishing_count = scans|selectattr('risk_score','ge',70)|list|length if scans else 0 %}
+      {% set suspicious_only = suspicious_count - phishing_count %}
+
+      <div class="stats-row stagger">
+
+        <div class="stat-card blue">
+          <div class="stat-card-header">
+            <span class="stat-card-label">Total Scans</span>
+            <div class="stat-card-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
+          </div>
+          <div class="stat-card-value">{{ total }}</div>
+          <div class="stat-card-sub">URLs analyzed to date</div>
+        </div>
+
+        <div class="stat-card green">
+          <div class="stat-card-header">
+            <span class="stat-card-label">Safe URLs</span>
+            <div class="stat-card-icon"><i class="fa-solid fa-circle-check"></i></div>
+          </div>
+          <div class="stat-card-value">{{ safe_count }}</div>
+          <div class="stat-card-sub">Risk score below 30%</div>
+        </div>
+
+        <div class="stat-card red">
+          <div class="stat-card-header">
+            <span class="stat-card-label">Phishing URLs</span>
+            <div class="stat-card-icon"><i class="fa-solid fa-skull-crossbones"></i></div>
+          </div>
+          <div class="stat-card-value">{{ phishing_count }}</div>
+          <div class="stat-card-sub">Risk score above 70%</div>
+        </div>
+
+      </div>
+
+      <!-- Risk Overview + Chart -->
+      <div class="chart-row">
+
+        <!-- Threat gauge -->
+        <div class="content-card">
+          <div class="card-head">
+            <h2>Threat Rate</h2>
+            <span class="pill {{ 'red' if total > 0 and phishing_count / total > 0.3 else 'green' }}">
+              {{ 'HIGH' if total > 0 and phishing_count / total > 0.3 else 'LOW' }}
+            </span>
+          </div>
+          <div class="card-body" style="display:flex;align-items:center;justify-content:center;padding:32px">
+            {% set pct = ((phishing_count / total * 100) | int) if total > 0 else 0 %}
+            <div class="mini-gauge">
+              <svg width="140" height="140" viewBox="0 0 140 140">
+                <circle cx="70" cy="70" r="54" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="14"/>
+                <circle cx="70" cy="70" r="54" fill="none"
+                  stroke="{{ 'var(--danger)' if pct > 30 else 'var(--success)' }}"
+                  stroke-width="14"
+                  stroke-dasharray="{{ (339.3 * pct / 100) | int }} 339.3"
+                  stroke-linecap="round"
+                  style="transition: stroke-dasharray 1.4s cubic-bezier(0.4,0,0.2,1); filter: drop-shadow(0 0 8px {{ 'var(--danger)' if pct > 30 else 'var(--success)' }})"
+                  id="gaugeArc"
+                  data-pct="{{ pct }}"/>
+              </svg>
+              <div class="gauge-text">
+                <div class="gauge-val" style="color:{{ 'var(--danger)' if pct > 30 else 'var(--success)' }}">{{ pct }}%</div>
+                <div class="gauge-sub">Threat<br>Rate</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Breakdown -->
+        <div class="content-card">
+          <div class="card-head">
+            <h2>Scan Breakdown</h2>
+          </div>
+          <div class="card-body">
+            {% if total > 0 %}
+              <!-- Safe -->
+              <div style="margin-bottom:18px">
+                <div style="display:flex;justify-content:space-between;font-size:0.8125rem;margin-bottom:6px">
+                  <span style="color:var(--success);font-weight:600"><i class="fa-solid fa-circle-check" style="margin-right:6px"></i>Safe</span>
+                  <span style="font-family:var(--font-mono);color:var(--text-secondary)">{{ safe_count }} / {{ total }}</span>
+                </div>
+                <div class="risk-track" style="height:8px">
+                  <div class="risk-fill" style="background:linear-gradient(90deg,var(--success),var(--accent-cyan));width:{{ (safe_count/total*100)|int }}%"></div>
+                </div>
+              </div>
+              <!-- Suspicious -->
+              <div style="margin-bottom:18px">
+                <div style="display:flex;justify-content:space-between;font-size:0.8125rem;margin-bottom:6px">
+                  <span style="color:var(--warning);font-weight:600"><i class="fa-solid fa-triangle-exclamation" style="margin-right:6px"></i>Suspicious</span>
+                  <span style="font-family:var(--font-mono);color:var(--text-secondary)">{{ suspicious_only }} / {{ total }}</span>
+                </div>
+                <div class="risk-track" style="height:8px">
+                  <div class="risk-fill" style="background:linear-gradient(90deg,var(--warning),#ff8c00);width:{{ (suspicious_only/total*100)|int }}%"></div>
+                </div>
+              </div>
+              <!-- Phishing -->
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:0.8125rem;margin-bottom:6px">
+                  <span style="color:var(--danger);font-weight:600"><i class="fa-solid fa-skull-crossbones" style="margin-right:6px"></i>Phishing</span>
+                  <span style="font-family:var(--font-mono);color:var(--text-secondary)">{{ phishing_count }} / {{ total }}</span>
+                </div>
+                <div class="risk-track" style="height:8px">
+                  <div class="risk-fill" style="background:linear-gradient(90deg,var(--danger),#c00030);width:{{ (phishing_count/total*100)|int }}%"></div>
+                </div>
+              </div>
+            {% else %}
+              <div class="empty-state">
+                <div class="empty-state-icon">📊</div>
+                <h3>No data yet</h3>
+                <p>Run your first URL scan to see statistics here.</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Scan History Table -->
+      <div class="content-card fade-in">
+        <div class="card-head">
+          <h2><i class="fa-solid fa-clock-rotate-left" style="margin-right:8px;color:var(--text-muted)"></i>Scan History</h2>
+          <div class="card-head-right">
+            {% if scans %}
+              <a href="{{ url_for('index') }}" class="btn btn-primary" style="font-size:0.8125rem;padding:7px 14px">
+                <i class="fa-solid fa-plus"></i> New Scan
+              </a>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if scans %}
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>ID</th>
+                <th>#</th>
                 <th>URL</th>
                 <th>Risk Score</th>
                 <th>Status</th>
+                <th>Result</th>
               </tr>
             </thead>
             <tbody>
               {% for scan in scans %}
                 {% set score = scan.risk_score if scan.risk_score is not none else 0 %}
+                {% set risk_level = 'low' if score < 30 else 'medium' if score < 70 else 'high' %}
+                {% set status_label = 'SAFE' if score < 30 else 'SUSPICIOUS' if score < 70 else 'PHISHING' %}
+                {% set pill_color  = 'green' if score < 30 else 'yellow' if score < 70 else 'red' %}
                 <tr>
-                  <td>{{ scan.id }}</td>
-                  <td class="url-cell">{{ scan.url }}</td>
+                  <td class="table-id-cell">#{{ scan.id }}</td>
+                  <td class="url-cell" title="{{ scan.url }}">{{ scan.url }}</td>
                   <td>
-                    <div class="risk-wrap" title="Risk score indicates likelihood of phishing behavior.">
-                      <div class="risk-bar" style="width: {{ score }}%;"></div>
-                      <span class="risk-label">{{ score }}%</span>
+                    <div class="risk-wrap">
+                      <div class="risk-bar-track">
+                        <div class="risk-bar" style="width:{{ score }}%;background:{{ 'var(--success)' if score < 30 else 'var(--warning)' if score < 70 else 'var(--danger)' }}"></div>
+                      </div>
+                      <span style="font-family:var(--font-mono);font-size:0.8rem;color:var(--text-secondary);min-width:36px">{{ score|int }}%</span>
                     </div>
-                    {% set risk_label = 'LOW' if score < 30 else 'MEDIUM' if score < 70 else 'HIGH' %}
-                    <span class="risk-status {% if score < 30 %}low{% elif score < 70 %}medium{% else %}high{% endif %}">{{ risk_label }}</span>
-                    <p class="risk-tooltip">{{ 'Minimal risk' if score < 30 else 'Moderate risk' if score < 70 else 'Critical risk' }}</p>
+                    <span class="risk-status {{ risk_level }}">{{ risk_level|upper }}</span>
                   </td>
                   <td>
-                    {% if scan.risk_score is none %}
-                      <span class="pill grey">N/A</span>
-                    {% elif score < 30 %}
-                      <span class="pill green">SAFE</span>
-                    {% elif score < 70 %}
-                      <span class="pill yellow">SUSPICIOUS</span>
-                    {% else %}
-                      <span class="pill red">PHISHING</span>
-                    {% endif %}
+                    <span class="pill {{ pill_color }}">{{ status_label }}</span>
+                  </td>
+                  <td style="font-size:0.8rem;color:var(--text-secondary);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ scan.result }}">
+                    {{ scan.result if scan.result else '—' }}
                   </td>
                 </tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
-      </section>
-    {% else %}
-      <section class="info-card" style="text-align:center;">
-        <h2>🚀 No scans yet — start analyzing URLs</h2>
-        <p class="small-info">The dashboard updates after your first security check. Run a scan from the main screen.</p>
-      </section>
-    {% endif %}
-  </main>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-state-icon">🚀</div>
+          <h3>No scans yet</h3>
+          <p>Start analyzing URLs to build your threat history. Results appear here after your first scan.</p>
+          <br>
+          <a href="{{ url_for('index') }}" class="btn btn-primary">
+            <i class="fa-solid fa-magnifying-glass"></i> Run First Scan
+          </a>
+        </div>
+        {% endif %}
+      </div>
 
-  <footer class="footer">© 2026 Team Apex | Cybersecurity Project</footer>
+      <footer class="app-footer">
+        © 2026 PhishGuard AI · Team Apex · All rights reserved
+      </footer>
 
-  <script>
-    document.addEventListener('submit', function(evt) {
-      const button = evt.target.querySelector('button[type="submit"]');
-      if (button) {
-        button.disabled = true;
-        const originalText = button.innerHTML;
-        button.innerHTML = '<span class="loader"></span> Analyzing...';
-        setTimeout(function() {
-          button.innerHTML = originalText;
-        }, 10000);
-      }
-    });
-  </script>
+    </div>
+  </div>
+</div>
+
+<script>
+// Sidebar toggle
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('sidebarOverlay');
+const toggle  = document.getElementById('sidebarToggle');
+
+if (toggle) {
+  toggle.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('active');
+  });
+  overlay.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+    overlay.classList.remove('active');
+  });
+}
+
+// Animate gauge arc from 0 on load
+const arc = document.getElementById('gaugeArc');
+if (arc) {
+  const target = arc.dataset.pct;
+  arc.setAttribute('stroke-dasharray', '0 339.3');
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      arc.setAttribute('stroke-dasharray', `${339.3 * target / 100} 339.3`);
+    }, 200);
+  });
+}
+</script>
 </body>
 </html>

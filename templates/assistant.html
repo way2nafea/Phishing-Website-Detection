@@ -1,149 +1,384 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Assistant - Phishing Detector</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-dI4OMlhkQpHnnFG8FPPrV4jgxQJQJmRoYFyrFJTtmXNqpu3tB4c1C8Q4ixjhRVH1ywT5iE0gVhK1bP4NvulwIg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Assistant — PhishGuard AI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <style>
+    /* Impact badge */
+    .impact-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 9px;
+      border-radius: 14px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      font-family: var(--font-display);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .impact-badge.high   { background: var(--danger-dim); color: var(--danger); }
+    .impact-badge.medium { background: var(--warning-dim); color: var(--warning); }
+    .impact-badge.low    { background: var(--success-dim); color: var(--success); }
+
+    /* Suggestion result block */
+    .suggestion-block {
+      margin-top: 18px;
+      padding: 20px;
+      background: rgba(45, 114, 212, 0.04);
+      border: 1px solid rgba(45, 114, 212, 0.18);
+      border-radius: var(--radius-md);
+      animation: slideInUp 0.4s ease;
+    }
+
+    .suggestion-block h3 {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .suggestion-block ul {
+      padding-left: 0;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .suggestion-block li {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.02);
+      border-radius: var(--radius-sm);
+      border-left: 2px solid var(--accent-blue);
+      line-height: 1.5;
+    }
+
+    .suggestion-block li.safe-item {
+      border-left-color: var(--success);
+      color: #7be8c4;
+    }
+  </style>
 </head>
 <body>
-  <header class="app-navbar">
-    <div class="nav-brand"><i class="fa-solid fa-shield-halved"></i> Phishing Detector</div>
-    <nav class="nav-links">
-      <a href="{{ url_for('index') }}" class="nav-link"><i class="fa-solid fa-magnifying-glass"></i> Scan</a>
-      <a href="{{ url_for('dashboard') }}" class="nav-link"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
-      <a href="{{ url_for('assistant') }}" class="nav-link active"><i class="fa-solid fa-robot"></i> Assistant</a>
-      <a href="{{ url_for('security_suite') }}" class="nav-link"><i class="fa-solid fa-lock"></i> Security</a>
-      <a href="{{ url_for('logout') }}" class="nav-link btn-ghost"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+<div class="app-layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <a href="{{ url_for('index') }}" class="sidebar-brand">
+      <div class="sidebar-brand-icon">🛡️</div>
+      <div class="sidebar-brand-name">
+        PhishGuard AI
+        <span>Detection System</span>
+      </div>
+    </a>
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Main</span>
+      <a href="{{ url_for('index') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+        URL Scanner
+      </a>
+      <a href="{{ url_for('dashboard') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>
+        Dashboard
+      </a>
+      <a href="{{ url_for('assistant') }}" class="sidebar-link active">
+        <span class="nav-icon"><i class="fa-solid fa-robot"></i></span>
+        AI Assistant
+      </a>
+      <a href="{{ url_for('security_suite') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>
+        Security Suite
+      </a>
+      <span class="nav-section-label">Account</span>
+      <a href="{{ url_for('logout') }}" class="sidebar-link danger-link">
+        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
+        Logout
+      </a>
     </nav>
-  </header>
+    <div class="sidebar-footer">
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        AI Engine Active
+      </div>
+    </div>
+  </aside>
 
-  <main class="app-container fade-in-page">
-    <section class="dashboard-header">
-      <h1>AI Smart Assistant</h1>
-      <p class="subtext">Analyze URLs with guided advice and quick threat insights.</p>
-    </section>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <section class="card-grid">
-      <article class="stat-card">
-        <h3><i class="fa-solid fa-bot"></i> Predictions</h3>
-        <p class="stat-value">{{ top_phishing|length if top_phishing else 0 }}</p>
-      </article>
-      <article class="stat-card">
-        <h3><i class="fa-solid fa-newspaper"></i> Feed Entries</h3>
-        <p class="stat-value">{{ threat_feed|length if threat_feed else 0 }}</p>
-      </article>
-      <article class="stat-card">
-        <h3><i class="fa-solid fa-flag"></i> Reports</h3>
-        <p class="stat-value">{{ reported_phishes|length if reported_phishes else 0 }}</p>
-      </article>
-    </section>
+  <div class="main-content">
 
-    {% if not top_phishing and not threat_feed and not reported_phishes %}
-      <section class="info-card" style="text-align:center;">
-        <h2>🚀 No assistant insights yet</h2>
-        <p class="small-info">Use the URL analyzer to generate your first intelligence report.</p>
-      </section>
-    {% endif %}
-
-    <section class="card">
-      <h2>Assistant URL Analysis</h2>
-      <form action="{{ url_for('assistant') }}" method="get" class="input-group">
-        <label for="assistant-url">Target URL</label>
-        <input id="assistant-url" type="text" name="url" value="{{ request.args.get('url','') }}" placeholder="https://example.com" required />
-        <div class="actions">
-          <button class="btn btn-primary" type="submit">Analyze URL</button>
-          <a class="btn btn-secondary" href="{{ url_for('dashboard') }}">View Dashboard</a>
-        </div>
-      </form>
-
-      {% if suggestion %}
-      {% set case = suggestion.status|lower %}
-      {% set status_class = 'green' if case == 'safe' else 'yellow' if case == 'suspicious' else 'red' %}
-      <div class="result-block">
-        <h3>Result: <span class="pill {{ status_class }}">{{ suggestion.status|upper }}</span></h3>
-        <p class="small-info">Domain: {{ suggestion.domain }} | Normalized: {{ suggestion.normalized }}</p>
-
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="sidebar-toggle" id="sidebarToggle"><i class="fa-solid fa-bars"></i></button>
         <div>
-          <strong>Why this result?</strong>
-          <ul>
-            {% if suggestion.issues %}
-              {% for issue in suggestion.issues %}
-              <li>⚠️ {{ issue }}</li>
+          <div class="topbar-title">AI Assistant</div>
+          <div class="topbar-breadcrumb">Threat intelligence &amp; URL analysis</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-pill">
+          <div class="status-dot"></div>
+          Live Intelligence Feed
+        </div>
+        <a href="{{ url_for('logout') }}" class="topbar-btn">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          Logout
+        </a>
+        <div class="topbar-avatar">{{ current_user.username[0].upper() }}</div>
+      </div>
+    </header>
+
+    <div class="page-body">
+
+      <div class="page-header fade-in">
+        <h1>AI Security Assistant</h1>
+        <p>Static URL analysis, threat intelligence feeds, and guided phishing detection insights.</p>
+      </div>
+
+      <!-- Stats row -->
+      <div class="stats-row stagger">
+        <div class="stat-card blue">
+          <div class="stat-card-header">
+            <span class="stat-card-label">Pattern DB</span>
+            <div class="stat-card-icon"><i class="fa-solid fa-database"></i></div>
+          </div>
+          <div class="stat-card-value">{{ top_phishing|length if top_phishing else 0 }}</div>
+          <div class="stat-card-sub">Known phishing patterns</div>
+        </div>
+        <div class="stat-card yellow">
+          <div class="stat-card-header">
+            <span class="stat-card-label">Threat Alerts</span>
+            <div class="stat-card-icon"><i class="fa-solid fa-rss"></i></div>
+          </div>
+          <div class="stat-card-value">{{ threat_feed|length if threat_feed else 0 }}</div>
+          <div class="stat-card-sub">Active threat advisories</div>
+        </div>
+        <div class="stat-card cyan">
+          <div class="stat-card-header">
+            <span class="stat-card-label">Reports</span>
+            <div class="stat-card-icon"><i class="fa-solid fa-flag"></i></div>
+          </div>
+          <div class="stat-card-value">{{ reported_phishes|length if reported_phishes else 0 }}</div>
+          <div class="stat-card-sub">Community submissions</div>
+        </div>
+      </div>
+
+      <!-- URL Analysis -->
+      <div class="content-card fade-in">
+        <div class="card-head">
+          <h2><i class="fa-solid fa-robot" style="margin-right:8px;color:var(--accent-cyan)"></i>Assistant URL Analysis</h2>
+        </div>
+        <div class="card-body">
+          <form action="{{ url_for('assistant') }}" method="GET" id="assistantForm">
+            <div class="scan-label">Target URL</div>
+            <div class="scan-input-row">
+              <div class="scan-input-wrap">
+                <i class="fa-solid fa-link scan-icon"></i>
+                <input
+                  id="assistant-url"
+                  type="text"
+                  name="url"
+                  value="{{ request.args.get('url','') }}"
+                  placeholder="https://example.com"
+                  autocomplete="off"
+                  spellcheck="false"
+                  required
+                >
+              </div>
+              <button type="submit" class="btn-scan" id="assistBtn">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <span>Quick Analysis</span>
+              </button>
+            </div>
+          </form>
+
+          {% if suggestion %}
+            {% set case = suggestion.status|lower %}
+            {% set status_class = 'safe' if case == 'safe' else 'suspicious' if case == 'suspicious' else 'phishing' %}
+            {% set status_icon  = '✅' if case == 'safe' else '⚠️' if case == 'suspicious' else '🚨' %}
+            <div class="suggestion-block">
+              <h3>
+                {{ status_icon }}
+                Result:
+                <span class="pill {{ status_class }}">{{ suggestion.status|upper }}</span>
+              </h3>
+              <p style="font-family:var(--font-mono);font-size:0.8125rem;color:var(--text-muted);margin-bottom:12px">
+                Domain: {{ suggestion.domain }} &nbsp;·&nbsp; Normalized: {{ suggestion.normalized }}
+              </p>
+              <div style="margin-bottom:14px">
+                <div style="font-size:0.8125rem;font-weight:600;color:var(--text-primary);margin-bottom:8px">
+                  <i class="fa-solid fa-list-check" style="margin-right:6px;color:var(--accent-blue)"></i>
+                  Detection Signals
+                </div>
+                <ul>
+                  {% if suggestion.issues %}
+                    {% for issue in suggestion.issues %}
+                      <li>⚠️ {{ issue }}</li>
+                    {% endfor %}
+                  {% else %}
+                    <li class="safe-item">✅ No immediate risk indicators detected from static analysis.</li>
+                  {% endif %}
+                </ul>
+              </div>
+              <a class="btn btn-primary" href="{{ url_for('index', url=suggestion.raw_url) }}">
+                <i class="fa-solid fa-shield-halved"></i> Run Full Deep Scan
+              </a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Two column: threat feed + top phishing -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:20px" class="fade-in" id="twoColGrid">
+
+        <!-- Threat Feed -->
+        <div class="content-card" style="margin-bottom:0">
+          <div class="card-head">
+            <h2><i class="fa-solid fa-triangle-exclamation" style="margin-right:8px;color:var(--warning)"></i>Active Threat Advisories</h2>
+          </div>
+          <div class="card-body" style="padding-top:12px">
+            {% if threat_feed %}
+              {% for item in threat_feed %}
+              <div class="feed-card">
+                <div class="feed-dot {{ item.impact }}"></div>
+                <div class="feed-content">
+                  <h4>{{ item.title }}</h4>
+                  <p>{{ item.recommendation }}</p>
+                  <div class="feed-meta">
+                    <span class="impact-badge {{ item.impact }}">{{ item.impact }}</span>
+                    <span>{{ item.flagged_on }}</span>
+                  </div>
+                </div>
+              </div>
               {% endfor %}
             {% else %}
-              <li>✅ No immediate risk indicators from static analysis.</li>
+              <div class="empty-state" style="padding:24px">
+                <div class="empty-state-icon">📡</div>
+                <h3>No active alerts</h3>
+                <p>Threat feed is clear.</p>
+              </div>
             {% endif %}
-          </ul>
+          </div>
         </div>
 
-        <div class="actions" style="margin-top:14px;">
-          <a class="btn btn-primary" href="{{ url_for('index', url=suggestion.raw_url) }}">Run Full Scan</a>
+        <!-- Top Phishing Patterns -->
+        <div class="content-card" style="margin-bottom:0">
+          <div class="card-head">
+            <h2><i class="fa-solid fa-spider" style="margin-right:8px;color:var(--danger)"></i>Known Phishing Patterns</h2>
+          </div>
+          <div class="card-body" style="padding:0">
+            {% if top_phishing %}
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>URL</th>
+                    <th>Reason</th>
+                    <th>Source</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in top_phishing[:6] %}
+                  <tr>
+                    <td class="url-cell" title="{{ item.url }}">{{ item.url }}</td>
+                    <td style="font-size:0.8rem;color:var(--text-secondary)">{{ item.reason }}</td>
+                    <td><span class="pill grey" style="font-size:0.7rem">{{ item.source }}</span></td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+              <div class="empty-state" style="padding:24px">
+                <div class="empty-state-icon">🕷️</div>
+                <h3>Pattern DB loading</h3>
+                <p>No patterns available yet.</p>
+              </div>
+            {% endif %}
+          </div>
         </div>
-      </div>
-      {% endif %}
-    </section>
 
-    <section class="card">
-      <h2>Top Scam / Phishing Patterns</h2>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr><th>URL</th><th>Reason</th><th>Source</th><th>Last Seen</th></tr>
-          </thead>
-          <tbody>
-            {% for item in top_phishing %}
+      </div>
+
+      <!-- Community Reports -->
+      <div class="content-card fade-in">
+        <div class="card-head">
+          <h2><i class="fa-solid fa-flag" style="margin-right:8px;color:var(--text-muted)"></i>Community Reports</h2>
+        </div>
+        {% if reported_phishes %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>URL</th><th>Reason</th><th>Reported By</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+              {% for report in reported_phishes[:8] %}
               <tr>
-                <td class="url-cell">{{ item.url }}</td>
-                <td>{{ item.reason }}</td>
-                <td>{{ item.source }}</td>
-                <td>{{ item.last_seen }}</td>
+                <td class="url-cell" title="{{ report.url }}">{{ report.url }}</td>
+                <td style="font-size:0.8rem;color:var(--text-secondary)">{{ report.reason }}</td>
+                <td><span class="pill blue" style="font-size:0.7rem">{{ report.user }}</span></td>
+                <td style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-muted)">{{ report.reported_on }}</td>
               </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-state-icon">📋</div>
+          <h3>No community reports yet</h3>
+          <p>User-submitted phishing reports will appear here once the community starts flagging suspicious URLs.</p>
+        </div>
+        {% endif %}
       </div>
-    </section>
 
-    <section class="card">
-      <h2>User Reports</h2>
-      {% if reported_phishes %}
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>URL</th><th>Reason</th><th>User</th><th>When</th></tr></thead>
-          <tbody>
-            {% for report in reported_phishes[:6] %}
-              <tr>
-                <td class="url-cell">{{ report.url }}</td>
-                <td>{{ report.reason }}</td>
-                <td>{{ report.user }}</td>
-                <td>{{ report.reported_on }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}
-        <p>No reported phishing URLs yet.</p>
-      {% endif %}
-    </section>
+      <footer class="app-footer">
+        © 2026 PhishGuard AI · Team Apex
+      </footer>
 
-  </main>
+    </div>
+  </div>
+</div>
 
-  <footer class="footer">© 2026 Team Apex </footer>
+<script>
+// Sidebar toggle
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('sidebarOverlay');
+const toggle  = document.getElementById('sidebarToggle');
+if (toggle) {
+  toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
+  overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
+}
 
-  <script>
-    document.addEventListener('submit', function(evt) {
-      const button = evt.target.querySelector('button[type="submit"]');
-      if (button) {
-        button.disabled = true;
-        const originalText = button.innerHTML;
-        button.innerHTML = '<span class="loader"></span> Analyzing...';
-        setTimeout(() => { button.innerHTML = originalText; button.disabled = false; }, 12000);
-      }
-    });
-  </script>
+// Two-col grid responsive
+const grid = document.getElementById('twoColGrid');
+function checkGrid() {
+  if (window.innerWidth < 700) { grid.style.gridTemplateColumns = '1fr'; }
+  else { grid.style.gridTemplateColumns = '1fr 1fr'; }
+}
+if (grid) { checkGrid(); window.addEventListener('resize', checkGrid); }
+
+// Scan button loading state
+const assistForm = document.getElementById('assistantForm');
+if (assistForm) {
+  assistForm.addEventListener('submit', function() {
+    const btn = document.getElementById('assistBtn');
+    if (btn) {
+      btn.innerHTML = '<span class="spin-ring" style="width:16px;height:16px;border-width:2px"></span> Analyzing…';
+      btn.style.pointerEvents = 'none';
+    }
+  });
+}
+</script>
 </body>
 </html>

@@ -1,190 +1,234 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Login - Phishing Detection</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — PhishGuard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}" />
+  <style>
+    /* Single-column social grid override (Google only) */
+    .social-grid-single { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px; }
 
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+    .btn-google {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(45, 114, 212, 0.2);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 0.9375rem;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .btn-google:hover {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: rgba(45, 114, 212, 0.4);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(45, 114, 212, 0.15);
+      color: var(--text-primary);
+    }
+    .btn-google:active { transform: translateY(0); }
+    .btn-google img { width: 20px; height: 20px; flex-shrink: 0; }
 
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Orbitron', sans-serif;
-            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+    .btn-google-disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
 
-        .card {
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(10px);
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 0 30px #00ffcc;
-            width: 350px;
-            text-align: center;
-            color: white;
-        }
-
-        h2 {
-            margin-bottom: 30px;
-            color: #00ffcc;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            border: none;
-            outline: none;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            border: none;
-            background: #00ffcc;
-            color: black;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        button:hover {
-            background: #00ccaa;
-        }
-
-        a {
-            color: #00ffcc;
-            text-decoration: none;
-        }
-
-        p {
-            margin-top: 15px;
-        }
-
-        .alert-container {
-            margin-bottom: 12px;
-            text-align: left;
-        }
-
-        .social-login {
-            margin-top: 14px;
-        }
-
-        .social-login p {
-            color: #9cf0ff;
-            margin-bottom: 8px;
-        }
-
-        .social-btn {
-            width: 100%;
-            border: none;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            padding: 10px;
-            font-weight: bold;
-            color: #fff;
-            cursor: pointer;
-            box-shadow: 0 0 8px rgba(0,0,0,0.25);
-        }
-
-        .social-btn.google { background: #dd4b39; }
-        .social-btn.facebook { background: #3b5998; }
-
-        .alert {
-            padding: 10px 14px;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
-        }
-
-        .alert-success {
-            background: rgba(0, 255, 170, 0.15);
-            color: #8affc8;
-            border: 1px solid #00ffa5;
-        }
-
-        .alert-danger {
-            background: rgba(255, 80, 80, 0.18);
-            color: #ffb3b3;
-            border: 1px solid #ff3d3d;
-        }
-
-        .checkbox-inline {
-            display: block;
-            text-align: left;
-            color: #cdfbff;
-            margin-bottom: 12px;
-            font-size: 0.85rem;
-        }
-
-        .checkbox-inline input {
-            margin-right: 7px;
-            transform: scale(1.1);
-        }
-    </style>
+    .oauth-warning {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 11px 14px;
+      background: rgba(255, 176, 32, 0.08);
+      border: 1px solid rgba(255, 176, 32, 0.25);
+      border-radius: var(--radius-sm);
+      font-size: 0.8125rem;
+      color: #ffd080;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .oauth-warning-icon { flex-shrink: 0; margin-top: 1px; }
+  </style>
 </head>
-
 <body>
+  <div class="auth-wrap">
+    <!-- Animated background orbs -->
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <canvas id="auth-canvas"></canvas>
 
-<div class="card">
-    <h2>🔐 Secure Login</h2>
+    <div class="auth-card">
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <div class="alert-container">
-          {% for category, message in messages %}
-            <div class="alert {{ 'alert-success' if category == 'success' else 'alert-danger' }}">{{ message }}</div>
-          {% endfor %}
+      <!-- Brand -->
+      <div class="auth-brand">
+        <div class="auth-brand-icon">🛡️</div>
+        <h1>PhishGuard</h1>
+        <p>Sign in to your account</p>
+      </div>
+
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-list">
+            {% for category, message in messages %}
+              <div class="flash-msg {{ category }}">
+                {% if category == 'success' %}✅{% elif category == 'danger' %}❌{% else %}ℹ️{% endif %}
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      <!-- Google OAuth warning if not configured -->
+      {% if not google_configured %}
+        <div class="oauth-warning">
+          <span class="oauth-warning-icon">⚠️</span>
+          <span>Google login is not configured. Set <code>GOOGLE_OAUTH_CLIENT_ID</code> and
+            <code>GOOGLE_OAUTH_CLIENT_SECRET</code> environment variables to enable it.</span>
         </div>
       {% endif %}
-    {% endwith %}
 
-    <form method="POST" id="loginForm">
-        <input type="email" id="email" name="email" placeholder="Email" required>
-        <input type="password" id="password" name="password" placeholder="Password" required>
-        <label class="checkbox-inline">
-            <input type="checkbox" name="remember"> Remember me
-        </label>
-        <button type="submit">Login</button>
-    </form>
+      <!-- Google Sign-In -->
+      {% if google_configured %}
+        <div class="social-grid-single">
+          <a href="{{ url_for('google.login') }}" class="btn-google">
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" />
+            Continue with Google
+          </a>
+        </div>
+      {% else %}
+        <div class="social-grid-single">
+          <span class="btn-google btn-google-disabled">
+            <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" />
+            Continue with Google (not configured)
+          </span>
+        </div>
+      {% endif %}
 
-    <div class="social-login">
-        <p>or login with</p>
-        <button type="button" class="social-btn google" onclick="window.location='{{ url_for('login_google') }}'">Continue with Google</button>
-        <button type="button" class="social-btn facebook" onclick="window.location='{{ url_for('login_facebook') }}'">Continue with Facebook</button>
-    </div>
+      <!-- Divider -->
+      <div class="auth-divider">or sign in with email</div>
 
-    <p><small><a href="{{ url_for('reset_password') }}">Forgot password?</a></small></p>
+      <!-- Email / Password form -->
+      <form method="POST" action="{{ url_for('login') }}" novalidate>
 
-    <p>Don't have an account?
-        <a href="{{ url_for('register') }}">Register</a>
-    </p>
-</div>
+        <div class="field-group">
+          <label for="email">Email Address</label>
+          <div class="field-wrap">
+            <span class="field-icon">✉️</span>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              required
+            />
+          </div>
+        </div>
 
-<script>
-document.getElementById('loginForm').addEventListener('submit', function(event) {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        <div class="field-group">
+          <label for="password">Password</label>
+          <div class="field-wrap">
+            <span class="field-icon">🔒</span>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="••••••••"
+              autocomplete="current-password"
+              required
+            />
+            <button type="button" class="pwd-toggle" aria-label="Toggle password visibility"
+              onclick="togglePassword('password', this)">👁️</button>
+          </div>
+        </div>
 
-    if (!emailRegex.test(email)) {
-        alert('Please enter a valid email address.');
-        event.preventDefault();
-        return;
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <label class="field-check" style="margin-bottom:0;">
+            <input type="checkbox" name="remember" />
+            Remember me
+          </label>
+          <a href="{{ url_for('reset_password') }}" style="font-size:0.8125rem; color:var(--text-link);">
+            Forgot password?
+          </a>
+        </div>
+
+        <button type="submit" class="btn-auth">Sign In</button>
+      </form>
+
+      <!-- Footer -->
+      <div class="auth-footer">
+        Don't have an account? <a href="{{ url_for('register') }}">Create one</a>
+      </div>
+
+    </div><!-- /.auth-card -->
+  </div><!-- /.auth-wrap -->
+
+  <script>
+    /* Password visibility toggle */
+    function togglePassword(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+      }
     }
 
-    if (password.length < 8) {
-        alert('Password must be at least 8 characters long.');
-        event.preventDefault();
-    }
-});
-</script>
+    /* Particle canvas */
+    (function () {
+      const canvas = document.getElementById('auth-canvas');
+      const ctx    = canvas.getContext('2d');
+      let particles = [];
 
+      function resize() {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      function rand(min, max) { return Math.random() * (max - min) + min; }
+
+      for (let i = 0; i < 55; i++) {
+        particles.push({
+          x: rand(0, window.innerWidth),
+          y: rand(0, window.innerHeight),
+          r: rand(1, 2.5),
+          dx: rand(-0.25, 0.25),
+          dy: rand(-0.25, 0.25),
+          a: rand(0.1, 0.5),
+        });
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(45, 114, 212, ${p.a})`;
+          ctx.fill();
+          p.x += p.dx;
+          p.y += p.dy;
+          if (p.x < 0 || p.x > canvas.width)  p.dx *= -1;
+          if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+        });
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+  </script>
 </body>
 </html>

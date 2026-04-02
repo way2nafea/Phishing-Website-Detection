@@ -1,139 +1,311 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Register - Phishing Detection</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Account — PhishGuard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}" />
+  <style>
+    .social-grid-single { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px; }
 
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+    .btn-google {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(45, 114, 212, 0.2);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      font-size: 0.9375rem;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .btn-google:hover {
+      background: rgba(255, 255, 255, 0.09);
+      border-color: rgba(45, 114, 212, 0.4);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(45, 114, 212, 0.15);
+      color: var(--text-primary);
+    }
+    .btn-google img { width: 20px; height: 20px; flex-shrink: 0; }
 
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Orbitron', sans-serif;
-            background: linear-gradient(135deg, #1f4037, #99f2c8);
-            height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+    .btn-google-disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
 
-        .card {
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(10px);
-            padding: 40px;
-            border-radius: 15px;
-            box-shadow: 0 0 30px #00ffcc;
-            width: 350px;
-            text-align: center;
-            color: white;
-        }
+    .oauth-warning {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 11px 14px;
+      background: rgba(255, 176, 32, 0.08);
+      border: 1px solid rgba(255, 176, 32, 0.25);
+      border-radius: var(--radius-sm);
+      font-size: 0.8125rem;
+      color: #ffd080;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
 
-        h2 {
-            margin-bottom: 30px;
-            color: #00ffcc;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 15px;
-            border-radius: 8px;
-            border: none;
-            outline: none;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            border: none;
-            background: #00ffcc;
-            color: black;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        button:hover {
-            background: #00ccaa;
-        }
-
-        a {
-            color: #00ffcc;
-            text-decoration: none;
-        }
-
-        p {
-            margin-top: 15px;
-        }
-
-        .social-login {
-            margin-top: 14px;
-        }
-
-        .social-login p {
-            color: #022b3a;
-            margin-bottom: 8px;
-        }
-
-        .social-btn {
-            width: 100%;
-            border: none;
-            border-radius: 8px;
-            margin-bottom: 8px;
-            padding: 10px;
-            font-weight: bold;
-            color: #fff;
-            cursor: pointer;
-            box-shadow: 0 0 8px rgba(0,0,0,0.25);
-        }
-
-        .social-btn.google { background: #dd4b39; }
-        .social-btn.facebook { background: #3b5998; }
-    </style>
+    .strength-bar-wrap {
+      margin-top: 6px;
+      display: none;
+    }
+    .strength-bar-track {
+      height: 4px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .strength-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.3s ease, background 0.3s ease;
+      width: 0%;
+    }
+    .strength-label {
+      font-size: 0.75rem;
+      margin-top: 4px;
+      font-weight: 500;
+    }
+  </style>
 </head>
-
 <body>
+  <div class="auth-wrap">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <canvas id="auth-canvas"></canvas>
 
-<div class="card">
-    <h2>📝 Create Account</h2>
+    <div class="auth-card">
 
-    <form method="POST" id="registerForm">
-        <input type="text" id="username" name="username" placeholder="Username" required>
-        <input type="email" id="email" name="email" placeholder="Email" required>
-        <input type="password" id="password" name="password" placeholder="Password (min 8 chars)" required>
-        <button type="submit">Register</button>
-    </form>
+      <!-- Brand -->
+      <div class="auth-brand">
+        <div class="auth-brand-icon">🛡️</div>
+        <h1>PhishGuard</h1>
+        <p>Create your account</p>
+      </div>
 
-    <div class="social-login">
-        <p>or sign up with</p>
-        <button type="button" class="social-btn google" onclick="window.location='{{ url_for('login_google') }}'">Continue with Google</button>
-        <button type="button" class="social-btn facebook" onclick="window.location='{{ url_for('login_facebook') }}'">Continue with Facebook</button>
-    </div>
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-list">
+            {% for category, message in messages %}
+              <div class="flash-msg {{ category }}">
+                {% if category == 'success' %}✅{% elif category == 'danger' %}❌{% else %}ℹ️{% endif %}
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
 
-    <p>Already have an account?
-        <a href="{{ url_for('login') }}">Login</a>
-    </p>
-</div>
+      <!-- Quick sign-up with Google -->
+      <div class="social-grid-single">
+        <a href="{{ url_for('google.login') }}" class="btn-google">
+          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" />
+          Sign up with Google
+        </a>
+      </div>
 
-<script>
-document.getElementById('registerForm').addEventListener('submit', function(event) {
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      <!-- Divider -->
+      <div class="auth-divider">or register with email</div>
 
-    if (!emailRegex.test(email)) {
-        alert('Please enter a valid email address.');
-        event.preventDefault();
-        return;
+      <!-- Registration form -->
+      <form method="POST" action="{{ url_for('register') }}" novalidate id="reg-form">
+
+        <div class="field-group">
+          <label for="username">Username</label>
+          <div class="field-wrap">
+            <span class="field-icon">👤</span>
+            <input
+              type="text"
+              id="username"
+              name="username"
+              placeholder="yourname"
+              autocomplete="username"
+              required
+              minlength="2"
+            />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="email">Email Address</label>
+          <div class="field-wrap">
+            <span class="field-icon">✉️</span>
+            <input
+              type="email"
+              id="email"
+              name="email"
+              placeholder="you@example.com"
+              autocomplete="email"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="password">Password</label>
+          <div class="field-wrap">
+            <span class="field-icon">🔒</span>
+            <input
+              type="password"
+              id="password"
+              name="password"
+              placeholder="Min. 8 characters"
+              autocomplete="new-password"
+              required
+              minlength="8"
+              oninput="checkStrength(this.value)"
+            />
+            <button type="button" class="pwd-toggle" aria-label="Toggle password visibility"
+              onclick="togglePassword('password', this)">👁️</button>
+          </div>
+          <div class="strength-bar-wrap" id="strength-wrap">
+            <div class="strength-bar-track">
+              <div class="strength-bar-fill" id="strength-fill"></div>
+            </div>
+            <div class="strength-label" id="strength-label"></div>
+          </div>
+        </div>
+
+        <div class="field-group" style="margin-bottom:20px;">
+          <label for="confirm_password">Confirm Password</label>
+          <div class="field-wrap">
+            <span class="field-icon">🔐</span>
+            <input
+              type="password"
+              id="confirm_password"
+              name="confirm_password"
+              placeholder="Repeat your password"
+              autocomplete="new-password"
+              required
+            />
+            <button type="button" class="pwd-toggle" aria-label="Toggle confirm password visibility"
+              onclick="togglePassword('confirm_password', this)">👁️</button>
+          </div>
+          <div class="field-error" id="confirm-error">Passwords do not match.</div>
+        </div>
+
+        <button type="submit" class="btn-auth" id="submit-btn">Create Account</button>
+      </form>
+
+      <!-- Footer -->
+      <div class="auth-footer">
+        Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
+      </div>
+
+    </div><!-- /.auth-card -->
+  </div><!-- /.auth-wrap -->
+
+  <script>
+    function togglePassword(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+      }
     }
 
-    if (password.length < 8) {
-        alert('Password must be at least 8 characters long.');
-        event.preventDefault();
-    }
-});
-</script>
+    function checkStrength(val) {
+      const wrap  = document.getElementById('strength-wrap');
+      const fill  = document.getElementById('strength-fill');
+      const label = document.getElementById('strength-label');
+      if (!val) { wrap.style.display = 'none'; return; }
+      wrap.style.display = 'block';
 
+      let score = 0;
+      if (val.length >= 8)  score++;
+      if (val.length >= 12) score++;
+      if (/[A-Z]/.test(val)) score++;
+      if (/[0-9]/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val)) score++;
+
+      const levels = [
+        { pct: '20%', color: 'var(--danger)',  text: 'Very weak',  textColor: '#ff8fa0' },
+        { pct: '40%', color: 'var(--danger)',  text: 'Weak',       textColor: '#ff8fa0' },
+        { pct: '60%', color: 'var(--warning)', text: 'Fair',       textColor: '#ffd080' },
+        { pct: '80%', color: 'var(--warning)', text: 'Strong',     textColor: '#ffd080' },
+        { pct: '100%',color: 'var(--success)', text: 'Very strong',textColor: 'var(--success)' },
+      ];
+      const lvl = levels[Math.min(score, 4)];
+      fill.style.width      = lvl.pct;
+      fill.style.background = lvl.color;
+      label.textContent     = lvl.text;
+      label.style.color     = lvl.textColor;
+    }
+
+    /* Client-side confirm password check */
+    document.getElementById('reg-form').addEventListener('submit', function (e) {
+      const pw  = document.getElementById('password').value;
+      const cpw = document.getElementById('confirm_password').value;
+      const err = document.getElementById('confirm-error');
+      const grp = document.getElementById('confirm_password').closest('.field-group');
+
+      if (pw !== cpw) {
+        e.preventDefault();
+        grp.classList.add('has-error');
+        err.style.display = 'block';
+        document.getElementById('confirm_password').focus();
+      } else {
+        grp.classList.remove('has-error');
+        err.style.display = 'none';
+      }
+    });
+
+    /* Particle canvas */
+    (function () {
+      const canvas = document.getElementById('auth-canvas');
+      const ctx    = canvas.getContext('2d');
+      let particles = [];
+
+      function resize() {
+        canvas.width  = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+      resize();
+      window.addEventListener('resize', resize);
+
+      function rand(min, max) { return Math.random() * (max - min) + min; }
+
+      for (let i = 0; i < 55; i++) {
+        particles.push({
+          x: rand(0, window.innerWidth),
+          y: rand(0, window.innerHeight),
+          r: rand(1, 2.5),
+          dx: rand(-0.25, 0.25),
+          dy: rand(-0.25, 0.25),
+          a: rand(0.1, 0.5),
+        });
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(45, 114, 212, ${p.a})`;
+          ctx.fill();
+          p.x += p.dx;
+          p.y += p.dy;
+          if (p.x < 0 || p.x > canvas.width)  p.dx *= -1;
+          if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+        });
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+  </script>
 </body>
 </html>
