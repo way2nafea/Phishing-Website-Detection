@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Security Suite — PhishGuard AI</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
   <style>
     .tool-grid {
@@ -192,6 +192,17 @@
         <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>
         Security Suite
       </a>
+      <span class="nav-section-label">Threat Intel</span>
+      <a href="{{ url_for('threat_map') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-map"></i></span>
+        2D Threat Map
+        <span class="nav-badge">LIVE</span>
+      </a>
+      <a href="{{ url_for('globe') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-globe"></i></span>
+        3D Globe
+        <span class="nav-badge" style="background:rgba(0,255,198,0.12);color:var(--accent-cyan);border-color:rgba(0,255,198,0.25)">NEW</span>
+      </a>
       <span class="nav-section-label">Account</span>
       <a href="{{ url_for('logout') }}" class="sidebar-link danger-link">
         <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
@@ -243,7 +254,7 @@
       <div class="tool-grid stagger">
 
         <!-- SMS Analyzer -->
-        <div class="tool-card">
+        <div class="tool-card" data-tilt data-tilt-max="8" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.15">
           <div class="tool-card-header">
             <div class="tool-icon" style="background:rgba(45,114,212,0.15);color:var(--accent-blue)">
               <i class="fa-solid fa-comment-sms"></i>
@@ -264,7 +275,7 @@
         </div>
 
         <!-- URL Checker -->
-        <div class="tool-card">
+        <div class="tool-card" data-tilt data-tilt-max="8" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.15">
           <div class="tool-card-header">
             <div class="tool-icon" style="background:rgba(0,255,198,0.1);color:var(--accent-cyan)">
               <i class="fa-solid fa-link"></i>
@@ -285,7 +296,7 @@
         </div>
 
         <!-- APK Checker -->
-        <div class="tool-card">
+        <div class="tool-card" data-tilt data-tilt-max="8" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.15">
           <div class="tool-card-header">
             <div class="tool-icon" style="background:rgba(255,176,32,0.12);color:var(--warning)">
               <i class="fa-brands fa-android"></i>
@@ -403,5 +414,7 @@ document.querySelectorAll('.tool-card form').forEach(form => {
   });
 });
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.7.0/vanilla-tilt.min.js"></script>
+<script src="{{ url_for('static', filename='js/tilt.js') }}"></script>
 </body>
 </html>

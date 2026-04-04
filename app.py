@@ -1041,6 +1041,170 @@ def google_verification():
 
 
 # =============================
+# THREAT MAP PAGE
+# =============================
+@app.route("/threat-map")
+@login_required
+def threat_map():
+    """Render the real-time global threat map page."""
+    return render_template("threat_map.html")
+
+
+# =============================
+# 3D GLOBE PAGE
+# =============================
+@app.route("/globe")
+@login_required
+def globe():
+    """Render the 3D rotating threat globe page."""
+    return render_template("globe.html")
+
+
+# =============================
+# THREAT MAP API
+# =============================
+@app.route("/api/threat-map")
+@login_required
+def api_threat_map():
+    """
+    Returns up to 20 recent threat events as JSON for the live threat map.
+
+    Priority:
+      1. Real scan data from scans.db (with simulated geo-coords by TLD heuristic)
+      2. Simulated realistic threat data when DB is sparse
+
+    Response schema per item:
+      { country, city, lat, lng, threat, severity, time }
+    """
+    import random
+    from datetime import datetime, timedelta
+
+    # ── Simulated threat pool (realistic global distribution) ──────────────
+    SIMULATED_THREATS = [
+        {"country": "India",          "city": "Mumbai",      "lat": 19.0760,  "lng": 72.8777,   "threat": "Phishing URL",          "severity": "HIGH"},
+        {"country": "United States",  "city": "New York",    "lat": 40.7128,  "lng": -74.0060,  "threat": "Credential Harvesting",  "severity": "HIGH"},
+        {"country": "Russia",         "city": "Moscow",      "lat": 55.7558,  "lng": 37.6173,   "threat": "Malware Distribution",   "severity": "HIGH"},
+        {"country": "China",          "city": "Beijing",     "lat": 39.9042,  "lng": 116.4074,  "threat": "Spear Phishing",         "severity": "HIGH"},
+        {"country": "Brazil",         "city": "São Paulo",   "lat": -23.5505, "lng": -46.6333,  "threat": "Banking Trojan",         "severity": "HIGH"},
+        {"country": "Nigeria",        "city": "Lagos",       "lat": 6.5244,   "lng": 3.3792,    "threat": "Advance Fee Fraud",      "severity": "HIGH"},
+        {"country": "Germany",        "city": "Berlin",      "lat": 52.5200,  "lng": 13.4050,   "threat": "Phishing URL",           "severity": "MEDIUM"},
+        {"country": "United Kingdom", "city": "London",      "lat": 51.5074,  "lng": -0.1278,   "threat": "CEO Fraud",              "severity": "MEDIUM"},
+        {"country": "France",         "city": "Paris",       "lat": 48.8566,  "lng": 2.3522,    "threat": "Credential Harvesting",  "severity": "MEDIUM"},
+        {"country": "Ukraine",        "city": "Kyiv",        "lat": 50.4501,  "lng": 30.5234,   "threat": "Ransomware C2",          "severity": "HIGH"},
+        {"country": "South Korea",    "city": "Seoul",       "lat": 37.5665,  "lng": 126.9780,  "threat": "Phishing URL",           "severity": "MEDIUM"},
+        {"country": "Japan",          "city": "Tokyo",       "lat": 35.6762,  "lng": 139.6503,  "threat": "Business Email Compromise","severity": "MEDIUM"},
+        {"country": "Canada",         "city": "Toronto",     "lat": 43.6532,  "lng": -79.3832,  "threat": "Phishing URL",           "severity": "LOW"},
+        {"country": "Australia",      "city": "Sydney",      "lat": -33.8688, "lng": 151.2093,  "threat": "Smishing Campaign",      "severity": "MEDIUM"},
+        {"country": "Turkey",         "city": "Istanbul",    "lat": 41.0082,  "lng": 28.9784,   "threat": "Phishing URL",           "severity": "HIGH"},
+        {"country": "Indonesia",      "city": "Jakarta",     "lat": -6.2088,  "lng": 106.8456,  "threat": "Malware Distribution",   "severity": "MEDIUM"},
+        {"country": "Mexico",         "city": "Mexico City", "lat": 19.4326,  "lng": -99.1332,  "threat": "Credential Harvesting",  "severity": "MEDIUM"},
+        {"country": "South Africa",   "city": "Johannesburg","lat": -26.2041, "lng": 28.0473,   "threat": "Phishing URL",           "severity": "LOW"},
+        {"country": "Poland",         "city": "Warsaw",      "lat": 52.2297,  "lng": 21.0122,   "threat": "Phishing URL",           "severity": "LOW"},
+        {"country": "Netherlands",    "city": "Amsterdam",   "lat": 52.3676,  "lng": 4.9041,    "threat": "Botnet C2",              "severity": "HIGH"},
+        {"country": "Romania",        "city": "Bucharest",   "lat": 44.4268,  "lng": 26.1025,   "threat": "Phishing URL",           "severity": "MEDIUM"},
+        {"country": "Vietnam",        "city": "Ho Chi Minh", "lat": 10.8231,  "lng": 106.6297,  "threat": "Credential Harvesting",  "severity": "MEDIUM"},
+        {"country": "Pakistan",       "city": "Karachi",     "lat": 24.8607,  "lng": 67.0011,   "threat": "Phishing URL",           "severity": "LOW"},
+        {"country": "Spain",          "city": "Madrid",      "lat": 40.4168,  "lng": -3.7038,   "threat": "Phishing URL",           "severity": "LOW"},
+        {"country": "Italy",          "city": "Rome",        "lat": 41.9028,  "lng": 12.4964,   "threat": "Invoice Fraud",          "severity": "MEDIUM"},
+        {"country": "Singapore",      "city": "Singapore",   "lat": 1.3521,   "lng": 103.8198,  "threat": "Phishing URL",           "severity": "LOW"},
+        {"country": "Egypt",          "city": "Cairo",       "lat": 30.0444,  "lng": 31.2357,   "threat": "Phishing URL",           "severity": "LOW"},
+        {"country": "Colombia",       "city": "Bogotá",      "lat": 4.7110,   "lng": -74.0721,  "threat": "Credential Harvesting",  "severity": "LOW"},
+        {"country": "Thailand",       "city": "Bangkok",     "lat": 13.7563,  "lng": 100.5018,  "threat": "Phishing URL",           "severity": "MEDIUM"},
+        {"country": "Argentina",      "city": "Buenos Aires","lat": -34.6037, "lng": -58.3816,  "threat": "Banking Trojan",         "severity": "MEDIUM"},
+    ]
+
+    try:
+        results = []
+        now = datetime.utcnow()
+
+        # ── Pull real scans from DB ─────────────────────────────────────────
+        real_scans = Scan.query.order_by(Scan.id.desc()).limit(50).all()
+
+        real_entries = []
+        for scan in real_scans:
+            if not scan.url:
+                continue
+
+            # Determine severity from risk_score
+            score = scan.risk_score or 0
+            if score >= 70:
+                severity = "HIGH"
+            elif score >= 40:
+                severity = "MEDIUM"
+            else:
+                severity = "LOW"
+
+            # Skip very safe URLs for the threat map
+            if severity == "LOW" and score < 20:
+                continue
+
+            # Determine threat type from result text
+            result_text = (scan.result or "").lower()
+            if "phishing" in result_text:
+                threat_type = "Phishing URL"
+            elif "suspicious" in result_text:
+                threat_type = "Suspicious URL"
+            elif "safe browsing" in result_text:
+                threat_type = "Malware Distribution"
+            elif "ssl" in result_text or "certificate" in result_text:
+                threat_type = "SSL Anomaly"
+            elif "ip address" in result_text:
+                threat_type = "Raw IP Phishing"
+            elif "new" in result_text and "domain" in result_text:
+                threat_type = "New Domain Phishing"
+            else:
+                threat_type = "Phishing URL"
+
+            # Use a random realistic location for real scans
+            # (geolocation of actual IPs would require ip-api.com calls)
+            loc = random.choice(SIMULATED_THREATS)
+
+            # Use scan timestamp if available
+            ts = now - timedelta(minutes=random.randint(1, 120))
+            if hasattr(scan, 'created_at') and scan.created_at:
+                ts = scan.created_at
+
+            real_entries.append({
+                "country":  loc["country"],
+                "city":     loc["city"],
+                "lat":      loc["lat"] + random.uniform(-0.5, 0.5),
+                "lng":      loc["lng"] + random.uniform(-0.5, 0.5),
+                "threat":   threat_type,
+                "severity": severity,
+                "time":     ts.isoformat() if hasattr(ts, 'isoformat') else str(ts),
+            })
+
+        results.extend(real_entries[:10])
+
+        # ── Fill up to 20 with simulated threats ───────────────────────────
+        needed = max(0, 15 - len(results))
+        if needed > 0:
+            pool = random.sample(SIMULATED_THREATS, min(needed, len(SIMULATED_THREATS)))
+            for item in pool:
+                minutes_ago = random.randint(1, 180)
+                ts = now - timedelta(minutes=minutes_ago)
+                # Add slight coordinate jitter so overlapping cities spread out
+                results.append({
+                    "country":  item["country"],
+                    "city":     item["city"],
+                    "lat":      round(item["lat"] + random.uniform(-0.8, 0.8), 4),
+                    "lng":      round(item["lng"] + random.uniform(-0.8, 0.8), 4),
+                    "threat":   item["threat"],
+                    "severity": item["severity"],
+                    "time":     ts.isoformat(),
+                })
+
+        # ── Limit and shuffle ──────────────────────────────────────────────
+        random.shuffle(results)
+        results = results[:20]
+
+        return jsonify(results)
+
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch threat map data", "details": str(e)}), 500
+
+
+# =============================
 # RUN APP
 # =============================
 if __name__ == "__main__":

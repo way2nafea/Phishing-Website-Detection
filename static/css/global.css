@@ -1458,3 +1458,269 @@ tbody td {
   .topbar-pill { display: none; }
   .topbar-title { font-size: 0.9375rem; }
 }
+
+/* ══════════════════════════════════════════════
+   THREAT MAP ADDITIONS
+   Append to bottom of global.css
+   ══════════════════════════════════════════════ */
+
+/* ─── NAV BADGE (LIVE pill) ───────────────────── */
+.nav-badge {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(255, 69, 96, 0.15);
+  color: var(--danger);
+  border: 1px solid rgba(255, 69, 96, 0.3);
+  animation: badgePulse 2s ease-in-out infinite;
+}
+@keyframes badgePulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+/* ─── THREAT MAP SECTION (dashboard teaser) ───── */
+.threat-map-teaser {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  background: linear-gradient(135deg,
+    rgba(45, 114, 212, 0.08) 0%,
+    rgba(0, 255, 198, 0.04) 100%);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  margin-bottom: 20px;
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+.threat-map-teaser::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 80% 50%, rgba(0,255,198,0.04) 0%, transparent 60%);
+  pointer-events: none;
+}
+.threat-map-teaser:hover {
+  border-color: var(--border-cyan);
+  box-shadow: var(--shadow-cyan);
+}
+.threat-map-teaser-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.threat-map-icon {
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, rgba(45,114,212,0.2), rgba(0,255,198,0.1));
+  border: 1px solid rgba(0,255,198,0.2);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+.threat-map-teaser-info h3 {
+  font-family: var(--font-display);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+.threat-map-teaser-info p {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+.threat-map-live-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  color: var(--danger);
+  background: rgba(255,69,96,0.08);
+  border: 1px solid rgba(255,69,96,0.25);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+.threat-map-live-badge .live-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--danger);
+  border-radius: 50%;
+  animation: livePulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(255,69,96,0.7); }
+  50%       { opacity: 0.85; transform: scale(1.15); box-shadow: 0 0 0 4px rgba(255,69,96,0); }
+}
+
+/* ─── VANILLA TILT CARDS ──────────────────────── */
+.stat-card[data-tilt] {
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.stat-card[data-tilt] .stat-card-icon,
+.stat-card[data-tilt] .stat-card-value {
+  transform: translateZ(12px);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   GLOBE PAGE — 3D THREAT GLOBE
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Ensure globe fills available height in app-layout */
+.app-layout:has(.globe-page-body) .main-content {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Cyber grid scanline overlay ──────────────────────────────── */
+.cyber-grid-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(rgba(45,114,212,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45,114,212,0.025) 1px, transparent 1px);
+  background-size: 80px 80px;
+}
+
+/* ── Scanline overlay for globe ──────────────────────────────── */
+.globe-scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   3D TILT CARDS — GLARE + DEPTH
+   ══════════════════════════════════════════════════════════════════ */
+
+/* All tiltable cards: ensure overflow hidden for glare clipping */
+.stat-card,
+.content-card,
+.result-card,
+.tool-card {
+  overflow: hidden;  /* clips the glare overlay to card bounds */
+  transform-style: preserve-3d;
+}
+
+/* Depth effect: inner content floats slightly forward */
+.stat-card .stat-card-icon,
+.stat-card .stat-card-value,
+.content-card .card-head,
+.result-card .result-verdict,
+.tool-card h3 {
+  transform: translateZ(10px);
+  transform-style: preserve-3d;
+}
+
+/* Glare element (injected by tilt.js) */
+.tilt-glare {
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ── Tilt transition override on hover active ─────────────────── */
+.stat-card:hover,
+.content-card:hover,
+.result-card:hover,
+.tool-card:hover {
+  /* Let tilt.js handle the transform; keep box-shadow */
+  box-shadow: var(--shadow-glow), 0 0 40px rgba(45,114,212,0.12);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   GLOBE NAV LINK in Sidebar
+   ══════════════════════════════════════════════════════════════════ */
+.sidebar-link .fa-globe {
+  background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   GLOBE TOOLTIP (inside Globe.gl label popups)
+   ══════════════════════════════════════════════════════════════════ */
+.globe-gl-tooltip {
+  font-family: var(--font-body) !important;
+  font-size: 0.875rem !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PULSE RING ANIMATION (used on globe stats counter pills)
+   ══════════════════════════════════════════════════════════════════ */
+@keyframes pulseDot {
+  0%   { box-shadow: 0 0 0 0 currentColor; }
+  70%  { box-shadow: 0 0 0 5px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.globe-counter-dot {
+  animation: pulseDot 2s ease-in-out infinite;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ARC GLOW (extra Leaflet / globe container glow)
+   ══════════════════════════════════════════════════════════════════ */
+#globe-container canvas {
+  display: block;
+}
+
+/* Ensure globe container takes full space */
+#globe-canvas-wrap > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SPINNING ICON UTILITY
+   ══════════════════════════════════════════════════════════════════ */
+.spinning i,
+i.spinning {
+  animation: spin360 0.6s linear infinite;
+}
+@keyframes spin360 { to { transform: rotate(360deg); } }
+
+/* ══════════════════════════════════════════════════════════════════
+   CYBER GRID SECTION HEADER (reusable)
+   ══════════════════════════════════════════════════════════════════ */
+.cyber-section-header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+.cyber-section-header::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-subtle);
+}
+.cyber-section-header i { color: var(--accent-cyan); }

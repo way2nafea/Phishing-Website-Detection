@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Assistant — PhishGuard AI</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
         crossorigin="anonymous" referrerpolicy="no-referrer">
   <style>
@@ -290,6 +290,17 @@
       <a href="{{ url_for('security_suite') }}" class="sidebar-link">
         <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>Security Suite
       </a>
+      <span class="nav-section-label">Threat Intel</span>
+      <a href="{{ url_for('threat_map') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-map"></i></span>
+        2D Threat Map
+        <span class="nav-badge">LIVE</span>
+      </a>
+      <a href="{{ url_for('globe') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-globe"></i></span>
+        3D Globe
+        <span class="nav-badge" style="background:rgba(0,255,198,0.12);color:var(--accent-cyan);border-color:rgba(0,255,198,0.25)">NEW</span>
+      </a>
       <span class="nav-section-label">Account</span>
       <a href="{{ url_for('logout') }}" class="sidebar-link danger-link">
         <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>Logout
@@ -339,7 +350,7 @@
 
       <!-- ── Stats row ──────────────────────────────────────────────────────── -->
       <div class="stats-row stagger" id="statsRow">
-        <div class="stat-card blue">
+        <div class="stat-card blue" data-tilt data-tilt-max="8" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.15">
           <div class="stat-card-header">
             <span class="stat-card-label">Live Phishing DB</span>
             <div class="stat-card-icon"><i class="fa-solid fa-database"></i></div>
@@ -354,7 +365,7 @@
             {% endif %}
           </div>
         </div>
-        <div class="stat-card yellow">
+        <div class="stat-card yellow" data-tilt data-tilt-max="8" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.15">
           <div class="stat-card-header">
             <span class="stat-card-label">Threat Advisories</span>
             <div class="stat-card-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
@@ -362,7 +373,7 @@
           <div class="stat-card-value" id="stat-advisories">{{ threat_feed|length if threat_feed else 0 }}</div>
           <div class="stat-card-sub">Active threat alerts</div>
         </div>
-        <div class="stat-card cyan">
+        <div class="stat-card cyan" data-tilt data-tilt-max="8" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.15">
           <div class="stat-card-header">
             <span class="stat-card-label">Community Reports</span>
             <div class="stat-card-icon"><i class="fa-solid fa-flag"></i></div>
@@ -370,7 +381,7 @@
           <div class="stat-card-value" id="stat-reports">{{ reported_phishes|length if reported_phishes else 0 }}</div>
           <div class="stat-card-sub">User-submitted URLs</div>
         </div>
-        <div class="stat-card" style="border-color:rgba(168,85,247,.25)">
+        <div class="stat-card" data-tilt data-tilt-max="8" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.15" style="border-color:rgba(168,85,247,.25)">
           <div class="stat-card-header">
             <span class="stat-card-label" style="color:#c084fc">Cyber News</span>
             <div class="stat-card-icon" style="background:rgba(168,85,247,.12);color:#c084fc">
@@ -906,5 +917,7 @@ async function forceRefresh() {
   }
 }
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.7.0/vanilla-tilt.min.js"></script>
+<script src="{{ url_for('static', filename='js/tilt.js') }}"></script>
 </body>
 </html>

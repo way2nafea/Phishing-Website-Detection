@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Threat Map — PhishGuard AI</title>
+
+  <!-- Core styles -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" crossorigin="anonymous">
+
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       HEIGHT CHAIN FIX — Threat Map page only.
+       These rules override global.css min-height values to create
+       a proper flex column that gives Leaflet a real pixel height.
+
+       The layout stack that must all have defined height:
+         html → body → .app-layout → .main-content
+             → .threat-page-body → .map-shell → #map
+
+       Root cause of blank map:
+         1. global.css uses min-height:100vh on body/.app-layout/
+            .main-content — flex:1 children can't inherit a real
+            pixel height from min-height, only from height.
+         2. The old .threat-page-body used
+            height: calc(100vh - var(--topbar-h)) which didn't
+            subtract the ribbon height → total > 100vh → clipped.
+         3. .map-shell was missing min-height:0 so it refused to
+            shrink below its intrinsic size, collapsing the chain.
+         4. #map used height:100% which resolved to 0 or clipped.
+       ═══════════════════════════════════════════════════════════ */
+
+    /* 1. Root height anchors */
+    html {
+      height: 100%;
+    }
+    body {
+      height: 100%;
+      min-height: unset;   /* override global min-height:100vh */
+      overflow: hidden;    /* no page-level scroll on map page */
+    }
+
+    /* 2. Flex row wrapper — must be 100% tall */
+    .app-layout {
+      height: 100%;
+      min-height: unset;   /* override global min-height:100vh */
+    }
+
+    /* 3. Right-hand column — now a flex column with real height */
+    .main-content {
+      height: 100%;
+      min-height: unset;         /* override global min-height:100vh */
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;          /* clip children, no outer scroll */
+    }
+
+    /* ─── STATUS RIBBON ──────────────────────────── */
+    .threat-ribbon {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 24px;
+      background: rgba(11, 15, 25, 0.92);
+      border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;            /* never shrink — keeps its natural height */
+      flex-wrap: wrap;
+      backdrop-filter: blur(12px);
+      z-index: 10;
+    }
+    .threat-ribbon-title {
+      font-family: var(--font-display);
+      font-size: 0.8125rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-cyan);
+      margin-right: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background: var(--danger);
+      border-radius: 50%;
+      animation: livePulse 1.4s ease-in-out infinite;
+      flex-shrink: 0;
+    }
+    @keyframes livePulse {
+      0%, 100% { opacity: 1; transform: scale(1); box-shadow: 0 0 0 0 rgba(255,69,96,0.7); }
+      50%       { opacity: 0.85; transform: scale(1.15); box-shadow: 0 0 0 6px rgba(255,69,96,0); }
+    }
+    .ribbon-stat {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      background: rgba(45, 114, 212, 0.08);
+      border: 1px solid var(--border-subtle);
+      border-radius: 20px;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      font-family: var(--font-mono);
+      transition: var(--transition);
+    }
+    .ribbon-stat.high   { border-color: rgba(255,69,96,0.3);  color: var(--danger); }
+    .ribbon-stat.medium { border-color: rgba(255,176,32,0.3); color: var(--warning); }
+    .ribbon-stat.low    { border-color: rgba(0,229,160,0.3);  color: var(--success); }
+    .ribbon-stat i { font-size: 0.6875rem; }
+    .ribbon-separator {
+      width: 1px;
+      height: 18px;
+      background: var(--border-subtle);
+      margin: 0 4px;
+    }
+    #last-updated-ribbon {
+      margin-left: auto;
+      font-size: 0.6875rem;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    /* 4. Page body — KEY CHANGE:
+          Old: height: calc(100vh - var(--topbar-h))
+               → didn't account for ribbon, caused overflow
+          New: flex:1 + min-height:0
+               → fills exactly the space left after the ribbon */
+    .threat-page-body {
+      flex: 1;             /* consume all remaining vertical space */
+      min-height: 0;       /* CRITICAL — without this, flex refuses to
+                              shrink the child below its content size,
+                              breaking the height chain entirely        */
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* 5. Map shell — same flex:1 + min-height:0 guard */
+    .map-shell {
+      flex: 1;
+      min-height: 0;       /* CRITICAL — same reason as above */
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* 6. Leaflet container — absolute fill of .map-shell.
+          Now that all ancestors have real pixel heights, Leaflet
+          reads the correct dimensions on init and invalidateSize(). */
+    #map {
+      position: absolute;
+      inset: 0;            /* shorthand for top:0 right:0 bottom:0 left:0 */
+      background: #080d18;
+      z-index: 1;
+    }
+
+    /* ─── MAP OVERLAY PANELS ─────────────────────── */
+    .map-panel {
+      position: absolute;
+      z-index: 500;
+      background: rgba(11, 15, 25, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,255,198,0.04);
+    }
+
+    /* Live intel sidebar */
+    .intel-panel {
+      top: 16px;
+      right: 16px;
+      width: 280px;
+      max-height: calc(100% - 32px);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .intel-panel-header {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .intel-panel-title {
+      font-family: var(--font-display);
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+    }
+    .intel-panel-body {
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+      padding: 8px 0;
+    }
+    .intel-panel-body::-webkit-scrollbar { width: 3px; }
+    .intel-panel-body::-webkit-scrollbar-track { background: transparent; }
+    .intel-panel-body::-webkit-scrollbar-thumb { background: var(--border-glow); border-radius: 2px; }
+
+    .intel-item {
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(45,114,212,0.06);
+      transition: background 0.15s;
+      cursor: default;
+    }
+    .intel-item:hover { background: rgba(45,114,212,0.06); }
+    .intel-item:last-child { border-bottom: none; }
+    .intel-item-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .intel-location {
+      font-family: var(--font-display);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .intel-sev {
+      font-family: var(--font-mono);
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      padding: 2px 7px;
+      border-radius: 10px;
+    }
+    .intel-sev.HIGH   { background: rgba(255,69,96,0.15);  color: var(--danger);  border: 1px solid rgba(255,69,96,0.3); }
+    .intel-sev.MEDIUM { background: rgba(255,176,32,0.15); color: var(--warning); border: 1px solid rgba(255,176,32,0.3); }
+    .intel-sev.LOW    { background: rgba(0,229,160,0.15);  color: var(--success); border: 1px solid rgba(0,229,160,0.3); }
+    .intel-type {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+    .intel-time {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+    .intel-skeleton {
+      height: 60px;
+      background: linear-gradient(90deg, rgba(45,114,212,0.06) 25%, rgba(45,114,212,0.12) 50%, rgba(45,114,212,0.06) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px;
+      margin: 8px 14px;
+    }
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    /* Threat count badge (top-left panel) */
+    .threat-counter-panel {
+      top: 16px;
+      left: 16px;
+      padding: 16px 20px;
+      min-width: 160px;
+    }
+    .counter-label {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-family: var(--font-mono);
+      margin-bottom: 6px;
+    }
+    .counter-value {
+      font-family: var(--font-display);
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: var(--accent-cyan);
+      line-height: 1;
+      text-shadow: 0 0 20px rgba(0,255,198,0.4);
+    }
+    .counter-sub {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* ─── CUSTOM LEAFLET MARKERS ──────────────── */
+    .pulse-marker {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pulse-marker .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      position: relative;
+      z-index: 2;
+    }
+    .pulse-marker .ring {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      opacity: 0;
+      animation: markerPulse 2.2s ease-out infinite;
+    }
+    .pulse-marker.high   .dot { background: var(--danger);  box-shadow: 0 0 8px var(--danger); }
+    .pulse-marker.high   .ring { border: 2px solid var(--danger); }
+    .pulse-marker.medium .dot { background: var(--warning); box-shadow: 0 0 8px var(--warning); }
+    .pulse-marker.medium .ring { border: 2px solid var(--warning); }
+    .pulse-marker.low    .dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
+    .pulse-marker.low    .ring { border: 2px solid var(--success); }
+
+    @keyframes markerPulse {
+      0%   { transform: scale(1);   opacity: 0.9; }
+      100% { transform: scale(3.5); opacity: 0; }
+    }
+
+    /* ─── LEAFLET POPUP OVERRIDE ──────────────── */
+    .leaflet-popup-content-wrapper {
+      background: rgba(11, 15, 25, 0.95) !important;
+      border: 1px solid rgba(45, 114, 212, 0.3) !important;
+      border-radius: var(--radius-md) !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6), 0 0 16px rgba(45,114,212,0.1) !important;
+      backdrop-filter: blur(12px) !important;
+      color: var(--text-primary) !important;
+      padding: 0 !important;
+    }
+    .leaflet-popup-content {
+      margin: 0 !important;
+      width: auto !important;
+    }
+    .leaflet-popup-tip-container { display: none !important; }
+    .leaflet-popup-close-button {
+      color: var(--text-muted) !important;
+      font-size: 18px !important;
+      top: 8px !important;
+      right: 10px !important;
+    }
+    .leaflet-popup-close-button:hover { color: var(--accent-cyan) !important; }
+    .leaflet-container { background: #080d18; }
+
+    .threat-popup { padding: 16px 18px; min-width: 210px; }
+    .popup-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .popup-flag { font-size: 1.25rem; }
+    .popup-location {
+      font-family: var(--font-display);
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    .popup-city { font-size: 0.75rem; color: var(--text-secondary); }
+    .popup-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+      font-size: 0.8125rem;
+    }
+    .popup-key { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.6875rem; }
+    .popup-val { color: var(--text-primary); font-weight: 500; }
+    .popup-time {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-subtle);
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+    }
+
+    /* ─── ZOOM CONTROLS OVERRIDE ──────────────── */
+    .leaflet-control-zoom {
+      border: 1px solid var(--border-subtle) !important;
+      border-radius: var(--radius-sm) !important;
+      overflow: hidden;
+    }
+    .leaflet-control-zoom a {
+      background: rgba(11,15,25,0.9) !important;
+      color: var(--text-secondary) !important;
+      border-bottom: 1px solid var(--border-subtle) !important;
+    }
+    .leaflet-control-zoom a:hover {
+      background: rgba(45,114,212,0.15) !important;
+      color: var(--accent-cyan) !important;
+    }
+
+    /* ─── BACK TO DASHBOARD LINK ─────────────── */
+    .map-dashboard-link {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      z-index: 500;
+    }
+
+    /* ─── LOADING OVERLAY ─────────────────────── */
+    #map-loading {
+      position: absolute;
+      inset: 0;
+      background: rgba(8, 13, 24, 0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+      transition: opacity 0.4s ease;
+    }
+    #map-loading.hidden { opacity: 0; pointer-events: none; }
+    .loader-globe {
+      font-size: 3rem;
+      margin-bottom: 16px;
+      animation: globeSpin 3s linear infinite;
+    }
+    @keyframes globeSpin {
+      0%   { transform: rotate(0deg) scale(1); }
+      50%  { transform: rotate(180deg) scale(1.1); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+    .loader-text {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+    .loader-sub {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 8px;
+    }
+
+    /* ─── REFRESH BTN IN RIBBON ───────────────── */
+    .ribbon-refresh-btn {
+      margin-left: 8px;
+      padding: 4px 10px;
+      font-size: 0.6875rem;
+      font-family: var(--font-mono);
+      background: rgba(45,114,212,0.1);
+      border: 1px solid var(--border-glow);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .ribbon-refresh-btn:hover {
+      background: rgba(45,114,212,0.2);
+      color: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+    }
+    .ribbon-refresh-btn.spinning i { animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── PARTICLES BG ────────────────────────── */
+    #tsparticles {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ─── RESPONSIVE ──────────────────────────── */
+    @media (max-width: 768px) {
+      .intel-panel { display: none; }
+      .threat-counter-panel { top: 8px; left: 8px; padding: 10px 14px; }
+      .counter-value { font-size: 1.75rem; }
+      .threat-ribbon { padding: 8px 16px; gap: 6px; }
+    }
+    @media (max-width: 480px) {
+      .ribbon-separator,
+      #last-updated-ribbon { display: none; }
+    }
+  </style>
+</head>
+<body>
+<div id="tsparticles"></div>
+
+<div class="app-layout">
+
+  <!-- Sidebar (position:fixed — out of flow) -->
+  <aside class="sidebar" id="sidebar">
+    <a href="{{ url_for('index') }}" class="sidebar-brand">
+      <div class="sidebar-brand-icon">🛡️</div>
+      <div class="sidebar-brand-name">
+        PhishGuard AI
+        <span>Detection System</span>
+      </div>
+    </a>
+
+    <nav class="sidebar-nav">
+      <span class="nav-section-label">Main</span>
+
+      <a href="{{ url_for('index') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
+        URL Scanner
+      </a>
+
+      <a href="{{ url_for('dashboard') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>
+        Dashboard
+      </a>
+
+      <a href="{{ url_for('assistant') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-robot"></i></span>
+        AI Assistant
+      </a>
+
+      <a href="{{ url_for('security_suite') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>
+        Security Suite
+      </a>
+
+      <a href="{{ url_for('threat_map') }}" class="sidebar-link active">
+        <span class="nav-icon"><i class="fa-solid fa-globe"></i></span>
+        Threat Map
+        <span class="nav-badge">LIVE</span>
+      </a>
+
+      <span class="nav-section-label">Account</span>
+
+      <a href="{{ url_for('logout') }}" class="sidebar-link danger-link">
+        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
+        Logout
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        Engine Online
+      </div>
+    </div>
+  </aside>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <!-- Main content column -->
+  <div class="main-content">
+
+    <!-- Topbar (position:fixed — out of flow, padding-top on .main-content offsets below it) -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+          <i class="fa-solid fa-bars"></i>
+        </button>
+        <div>
+          <div class="topbar-title">🌍 Global Threat Map</div>
+          <div class="topbar-breadcrumb">Real-time phishing &amp; threat intelligence feed</div>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="topbar-pill" id="connection-status">
+          <div class="status-dot"></div>
+          Live Feed Active
+        </div>
+        <a href="{{ url_for('logout') }}" class="topbar-btn">
+          <i class="fa-solid fa-right-from-bracket"></i>
+          Logout
+        </a>
+        <div class="topbar-avatar" title="{{ current_user.username }}">
+          {{ current_user.username[0].upper() }}
+        </div>
+      </div>
+    </header>
+
+    <!-- Threat Ribbon — flex-shrink:0, takes its natural height in the column -->
+    <div class="threat-ribbon">
+      <div class="threat-ribbon-title">
+        <span class="live-dot"></span>
+        LIVE INTEL
+      </div>
+
+      <div class="ribbon-stat high">
+        <i class="fa-solid fa-circle-exclamation"></i>
+        HIGH <span id="count-high">—</span>
+      </div>
+      <div class="ribbon-stat medium">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        MED <span id="count-medium">—</span>
+      </div>
+      <div class="ribbon-stat low">
+        <i class="fa-solid fa-circle-check"></i>
+        LOW <span id="count-low">—</span>
+      </div>
+
+      <div class="ribbon-separator"></div>
+
+      <div class="ribbon-stat">
+        <i class="fa-solid fa-arrows-rotate"></i>
+        Auto-refresh 12s
+      </div>
+
+      <button class="ribbon-refresh-btn" id="refresh-btn" onclick="manualRefresh()">
+        <i class="fa-solid fa-rotate-right" id="refresh-icon"></i>
+        Refresh Now
+      </button>
+
+      <span id="last-updated-ribbon">Last updated: —</span>
+    </div>
+
+    <!-- Page body: flex:1 → fills all remaining height after the ribbon -->
+    <div class="page-body threat-page-body">
+
+      <!-- Map shell: flex:1 + min-height:0 → gives #map real pixel height -->
+      <div class="map-shell">
+
+        <!-- Loading overlay (absolute, covers the shell) -->
+        <div id="map-loading">
+          <div class="loader-globe">🌐</div>
+          <div class="loader-text">Acquiring Threat Feed</div>
+          <div class="loader-sub">Connecting to global intelligence network...</div>
+        </div>
+
+        <!-- Leaflet map (position:absolute, inset:0 → fills shell exactly) -->
+        <div id="map"></div>
+
+        <!-- Threat count panel (top-left) -->
+        <div class="map-panel threat-counter-panel">
+          <div class="counter-label">Active Threats</div>
+          <div class="counter-value" id="threat-counter">0</div>
+          <div class="counter-sub" id="threat-counter-sub">Loading...</div>
+        </div>
+
+        <!-- Intel feed panel (top-right) -->
+        <div class="map-panel intel-panel">
+          <div class="intel-panel-header">
+            <span class="intel-panel-title">
+              <i class="fa-solid fa-satellite-dish" style="color:var(--accent-cyan);margin-right:6px;font-size:0.75rem"></i>
+              Threat Feed
+            </span>
+            <span id="intel-timestamp" style="font-size:0.6rem;font-family:var(--font-mono);color:var(--text-muted)">LIVE</span>
+          </div>
+          <div class="intel-panel-body" id="intel-feed">
+            <div class="intel-skeleton"></div>
+            <div class="intel-skeleton"></div>
+            <div class="intel-skeleton"></div>
+          </div>
+        </div>
+
+        <!-- Back to dashboard -->
+        <a href="{{ url_for('dashboard') }}" class="map-panel map-dashboard-link"
+           style="padding:8px 14px;display:flex;align-items:center;gap:6px;font-size:0.75rem;
+                  color:var(--text-secondary);text-decoration:none;transition:var(--transition)"
+           onmouseover="this.style.color='var(--accent-cyan)'"
+           onmouseout="this.style.color='var(--text-secondary)'">
+          <i class="fa-solid fa-arrow-left" style="font-size:0.625rem"></i>
+          Dashboard
+        </a>
+
+      </div><!-- /.map-shell -->
+    </div><!-- /.threat-page-body -->
+
+  </div><!-- /.main-content -->
+</div><!-- /.app-layout -->
+
+<!-- ─── SCRIPTS ────────────────────────────────── -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tsparticles/2.12.0/tsparticles.bundle.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.1/vanilla-tilt.min.js" crossorigin="anonymous"></script>
+
+<!-- Sidebar toggle -->
+<script>
+  const sidebar = document.getElementById('sidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const toggle  = document.getElementById('sidebarToggle');
+  if (toggle) {
+    toggle.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('active');
+    });
+    overlay.addEventListener('click', () => {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('active');
+    });
+  }
+</script>
+
+<!-- tsParticles -->
+<script>
+  tsParticles.load("tsparticles", {
+    fpsLimit: 40,
+    background: { color: { value: "transparent" } },
+    particles: {
+      number: { value: 55, density: { enable: true, area: 900 } },
+      color: { value: ["#2D72D4", "#00FFC6", "#1a4a8a"] },
+      shape: { type: "circle" },
+      opacity: { value: { min: 0.05, max: 0.25 }, animation: { enable: true, speed: 0.8, minimumValue: 0.05 } },
+      size: { value: { min: 1, max: 2.5 } },
+      move: { enable: true, speed: 0.5, direction: "none", random: true, straight: false, outModes: "out" },
+      links: { enable: true, distance: 130, color: "#2D72D4", opacity: 0.07, width: 1 }
+    },
+    interactivity: {
+      events: { onHover: { enable: false }, onClick: { enable: false } }
+    },
+    detectRetina: true
+  });
+</script>
+
+<!-- Threat map logic -->
+<script src="{{ url_for('static', filename='js/threat_map.js') }}"></script>
+
+<script src="{{ url_for('static', filename='js/tilt.js') }}"></script>
+</body>
+</html>

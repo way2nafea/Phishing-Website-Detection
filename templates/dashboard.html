@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard — PhishGuard AI</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
   <style>
     /* Mini chart placeholder */
@@ -83,6 +83,17 @@
         Security Suite
       </a>
 
+      <a href="{{ url_for('threat_map') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-map"></i></span>
+        2D Threat Map
+        <span class="nav-badge">LIVE</span>
+      </a>
+      <a href="{{ url_for('globe') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-globe"></i></span>
+        3D Globe
+        <span class="nav-badge" style="background:rgba(0,255,198,0.12);color:var(--accent-cyan);border-color:rgba(0,255,198,0.25)">NEW</span>
+      </a>
+
       <span class="nav-section-label">Account</span>
 
       <a href="{{ url_for('logout') }}" class="sidebar-link danger-link">
@@ -149,7 +160,7 @@
 
       <div class="stats-row stagger">
 
-        <div class="stat-card blue">
+        <div class="stat-card blue" data-tilt data-tilt-max="8" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.15">
           <div class="stat-card-header">
             <span class="stat-card-label">Total Scans</span>
             <div class="stat-card-icon"><i class="fa-solid fa-magnifying-glass"></i></div>
@@ -158,7 +169,7 @@
           <div class="stat-card-sub">URLs analyzed to date</div>
         </div>
 
-        <div class="stat-card green">
+        <div class="stat-card green" data-tilt data-tilt-max="8" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.15">
           <div class="stat-card-header">
             <span class="stat-card-label">Safe URLs</span>
             <div class="stat-card-icon"><i class="fa-solid fa-circle-check"></i></div>
@@ -167,7 +178,7 @@
           <div class="stat-card-sub">Risk score below 30%</div>
         </div>
 
-        <div class="stat-card red">
+        <div class="stat-card red" data-tilt data-tilt-max="8" data-tilt-speed="400" data-tilt-glare data-tilt-max-glare="0.15">
           <div class="stat-card-header">
             <span class="stat-card-label">Phishing URLs</span>
             <div class="stat-card-icon"><i class="fa-solid fa-skull-crossbones"></i></div>
@@ -176,6 +187,27 @@
           <div class="stat-card-sub">Risk score above 70%</div>
         </div>
 
+      </div>
+
+      <!-- 🌍 Global Threat Map Teaser -->
+      <div class="threat-map-teaser fade-in">
+        <div class="threat-map-teaser-left">
+          <div class="threat-map-icon">🌍</div>
+          <div class="threat-map-teaser-info">
+            <h3>Global Threat Map</h3>
+            <p>Real-time phishing & attack origin intelligence — updated every 12 seconds.</p>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <div class="threat-map-live-badge">
+            <span class="live-dot"></span>
+            LIVE
+          </div>
+          <a href="{{ url_for('threat_map') }}" class="btn btn-primary" style="font-size:0.8125rem;padding:8px 18px;white-space:nowrap">
+            <i class="fa-solid fa-map-location-dot"></i>
+            Open Map
+          </a>
+        </div>
       </div>
 
       <!-- Risk Overview + Chart -->
@@ -335,6 +367,8 @@
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.7.0/vanilla-tilt.min.js"></script>
+<script src="{{ url_for('static', filename='js/tilt.js') }}"></script>
 <script>
 // Sidebar toggle
 const sidebar = document.getElementById('sidebar');
@@ -363,6 +397,9 @@ if (arc) {
     }, 200);
   });
 }
+
+// tilt.js (loaded above) auto-initializes all [data-tilt] and .stat-card elements.
+// No manual VanillaTilt.init() call needed.
 </script>
 </body>
 </html>

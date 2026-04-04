@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -7,7 +7,7 @@
   <meta name="description" content="Check if a website URL is safe or phishing using machine learning, Google Safe Browsing, and SSL analysis.">
   <meta name="keywords" content="phishing checker, url safety, website security, phishing detection">
   <meta name="author" content="Team Apex">
-  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
   <style>
     /* Pulse rings animation for scan button */
@@ -104,6 +104,17 @@
       <a href="{{ url_for('security_suite') }}" class="sidebar-link">
         <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>
         Security Suite
+      </a>
+      <span class="nav-section-label">Threat Intel</span>
+      <a href="{{ url_for('threat_map') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-map"></i></span>
+        2D Threat Map
+        <span class="nav-badge">LIVE</span>
+      </a>
+      <a href="{{ url_for('globe') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-globe"></i></span>
+        3D Globe
+        <span class="nav-badge" style="background:rgba(0,255,198,0.12);color:var(--accent-cyan);border-color:rgba(0,255,198,0.25)">NEW</span>
       </a>
       <span class="nav-section-label">Account</span>
       <a href="{{ url_for('logout') }}" class="sidebar-link danger-link">
@@ -394,5 +405,6 @@ if (resultCard) {
   }, 400);
 }
 </script>
+<script src="{{ url_for('static', filename='js/tilt.js') }}"></script>
 </body>
 </html>
