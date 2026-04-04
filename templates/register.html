@@ -3,9 +3,55 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Create Account — PhishGuard</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}" />
+  <title>Create Account — NEXUS</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --nexus-cyan: #00ffe7;
+      --nexus-cyan-glow: rgba(0, 255, 231, 0.35);
+      --nexus-cyan-dim:  rgba(0, 255, 231, 0.1);
+    }
+
+    .auth-brand h1 {
+      font-family: 'Orbitron', monospace !important;
+      letter-spacing: 0.18em !important;
+      font-size: 1.75rem !important;
+      background: linear-gradient(135deg, #ffffff, var(--nexus-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 16px var(--nexus-cyan-glow));
+    }
+    .auth-brand p {
+      font-family: 'Share Tech Mono', monospace !important;
+      font-size: 0.6875rem !important;
+      letter-spacing: 0.15em !important;
+      text-transform: uppercase;
+    }
+    .auth-brand-icon {
+      font-size: 2rem !important;
+      background: linear-gradient(135deg, var(--nexus-cyan), rgba(45,114,212,0.8)) !important;
+      box-shadow: 0 0 24px var(--nexus-cyan-glow) !important;
+    }
+    .btn-auth {
+      background: linear-gradient(135deg, var(--nexus-cyan), var(--accent-blue, #2d72d4)) !important;
+      color: #020408 !important;
+      font-weight: 700 !important;
+      box-shadow: 0 0 20px var(--nexus-cyan-glow) !important;
+    }
+    .btn-auth:hover { box-shadow: 0 0 32px var(--nexus-cyan-glow) !important; }
+
+    .auth-brand-sub-system {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.6rem;
+      color: rgba(0,255,231,0.4);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
     .social-grid-single { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px; }
 
     .btn-google {
@@ -15,7 +61,7 @@
       gap: 10px;
       padding: 12px 18px;
       background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(45, 114, 212, 0.2);
+      border: 1px solid rgba(0, 255, 231, 0.2);
       border-radius: var(--radius-sm);
       color: var(--text-primary);
       font-family: var(--font-body);
@@ -26,38 +72,15 @@
       transition: var(--transition);
     }
     .btn-google:hover {
-      background: rgba(255, 255, 255, 0.09);
-      border-color: rgba(45, 114, 212, 0.4);
+      background: rgba(0, 255, 231, 0.06);
+      border-color: rgba(0, 255, 231, 0.4);
       transform: translateY(-1px);
-      box-shadow: 0 4px 16px rgba(45, 114, 212, 0.15);
+      box-shadow: 0 4px 16px rgba(0, 255, 231, 0.12);
       color: var(--text-primary);
     }
     .btn-google img { width: 20px; height: 20px; flex-shrink: 0; }
 
-    .btn-google-disabled {
-      opacity: 0.4;
-      cursor: not-allowed;
-      pointer-events: none;
-    }
-
-    .oauth-warning {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 11px 14px;
-      background: rgba(255, 176, 32, 0.08);
-      border: 1px solid rgba(255, 176, 32, 0.25);
-      border-radius: var(--radius-sm);
-      font-size: 0.8125rem;
-      color: #ffd080;
-      margin-bottom: 16px;
-      line-height: 1.5;
-    }
-
-    .strength-bar-wrap {
-      margin-top: 6px;
-      display: none;
-    }
+    .strength-bar-wrap { margin-top: 6px; display: none; }
     .strength-bar-track {
       height: 4px;
       background: rgba(255,255,255,0.08);
@@ -88,9 +111,10 @@
 
       <!-- Brand -->
       <div class="auth-brand">
-        <div class="auth-brand-icon">🛡️</div>
-        <h1>PhishGuard</h1>
+        <div class="auth-brand-icon">⬡</div>
+        <h1>NEXUS</h1>
         <p>Create your account</p>
+        <div class="auth-brand-sub-system">CYBER THREAT INTELLIGENCE PLATFORM</div>
       </div>
 
       <!-- Flash messages -->
@@ -125,15 +149,8 @@
           <label for="username">Username</label>
           <div class="field-wrap">
             <span class="field-icon">👤</span>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              placeholder="yourname"
-              autocomplete="username"
-              required
-              minlength="2"
-            />
+            <input type="text" id="username" name="username" placeholder="yourname"
+              autocomplete="username" required minlength="2" />
           </div>
         </div>
 
@@ -141,14 +158,8 @@
           <label for="email">Email Address</label>
           <div class="field-wrap">
             <span class="field-icon">✉️</span>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              placeholder="you@example.com"
-              autocomplete="email"
-              required
-            />
+            <input type="email" id="email" name="email" placeholder="you@example.com"
+              autocomplete="email" required />
           </div>
         </div>
 
@@ -156,16 +167,8 @@
           <label for="password">Password</label>
           <div class="field-wrap">
             <span class="field-icon">🔒</span>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              placeholder="Min. 8 characters"
-              autocomplete="new-password"
-              required
-              minlength="8"
-              oninput="checkStrength(this.value)"
-            />
+            <input type="password" id="password" name="password" placeholder="Min. 8 characters"
+              autocomplete="new-password" required minlength="8" oninput="checkStrength(this.value)" />
             <button type="button" class="pwd-toggle" aria-label="Toggle password visibility"
               onclick="togglePassword('password', this)">👁️</button>
           </div>
@@ -181,26 +184,21 @@
           <label for="confirm_password">Confirm Password</label>
           <div class="field-wrap">
             <span class="field-icon">🔐</span>
-            <input
-              type="password"
-              id="confirm_password"
-              name="confirm_password"
-              placeholder="Repeat your password"
-              autocomplete="new-password"
-              required
-            />
+            <input type="password" id="confirm_password" name="confirm_password"
+              placeholder="Repeat your password" autocomplete="new-password" required />
             <button type="button" class="pwd-toggle" aria-label="Toggle confirm password visibility"
               onclick="togglePassword('confirm_password', this)">👁️</button>
           </div>
           <div class="field-error" id="confirm-error">Passwords do not match.</div>
         </div>
 
-        <button type="submit" class="btn-auth" id="submit-btn">Create Account</button>
+        <button type="submit" class="btn-auth" id="submit-btn">Create NEXUS Account</button>
       </form>
 
       <!-- Footer -->
       <div class="auth-footer">
         Already have an account? <a href="{{ url_for('login') }}">Sign in</a>
+        &nbsp;·&nbsp; <a href="/">← Home</a>
       </div>
 
     </div><!-- /.auth-card -->
@@ -209,13 +207,8 @@
   <script>
     function togglePassword(inputId, btn) {
       const input = document.getElementById(inputId);
-      if (input.type === 'password') {
-        input.type = 'text';
-        btn.textContent = '🙈';
-      } else {
-        input.type = 'password';
-        btn.textContent = '👁️';
-      }
+      input.type = input.type === 'password' ? 'text' : 'password';
+      btn.textContent = input.type === 'password' ? '👁️' : '🙈';
     }
 
     function checkStrength(val) {
@@ -246,13 +239,11 @@
       label.style.color     = lvl.textColor;
     }
 
-    /* Client-side confirm password check */
     document.getElementById('reg-form').addEventListener('submit', function (e) {
       const pw  = document.getElementById('password').value;
       const cpw = document.getElementById('confirm_password').value;
       const err = document.getElementById('confirm-error');
       const grp = document.getElementById('confirm_password').closest('.field-group');
-
       if (pw !== cpw) {
         e.preventDefault();
         grp.classList.add('has-error');
@@ -269,36 +260,25 @@
       const canvas = document.getElementById('auth-canvas');
       const ctx    = canvas.getContext('2d');
       let particles = [];
-
-      function resize() {
-        canvas.width  = window.innerWidth;
-        canvas.height = window.innerHeight;
-      }
+      function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
       resize();
       window.addEventListener('resize', resize);
-
-      function rand(min, max) { return Math.random() * (max - min) + min; }
-
-      for (let i = 0; i < 55; i++) {
+      const COLORS = ['rgba(0,255,231,', 'rgba(0,255,136,', 'rgba(45,114,212,'];
+      for (let i = 0; i < 65; i++) {
         particles.push({
-          x: rand(0, window.innerWidth),
-          y: rand(0, window.innerHeight),
-          r: rand(1, 2.5),
-          dx: rand(-0.25, 0.25),
-          dy: rand(-0.25, 0.25),
-          a: rand(0.1, 0.5),
+          x: Math.random() * window.innerWidth, y: Math.random() * window.innerHeight,
+          r: Math.random() * 1.8 + 0.4, dx: (Math.random()-0.5)*0.3, dy: (Math.random()-0.5)*0.3,
+          a: Math.random() * 0.35 + 0.08, color: COLORS[Math.floor(Math.random() * 3)],
         });
       }
-
       function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         particles.forEach(p => {
           ctx.beginPath();
-          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(45, 114, 212, ${p.a})`;
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+          ctx.fillStyle = p.color + p.a + ')';
           ctx.fill();
-          p.x += p.dx;
-          p.y += p.dy;
+          p.x += p.dx; p.y += p.dy;
           if (p.x < 0 || p.x > canvas.width)  p.dx *= -1;
           if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
         });

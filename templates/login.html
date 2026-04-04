@@ -3,9 +3,62 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sign In — PhishGuard</title>
+  <title>Sign In — NEXUS</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <style>
+    /* NEXUS brand overrides */
+    :root {
+      --nexus-cyan: #00ffe7;
+      --nexus-cyan-glow: rgba(0, 255, 231, 0.35);
+      --nexus-cyan-dim:  rgba(0, 255, 231, 0.1);
+    }
+
+    /* Override auth-brand for NEXUS look */
+    .auth-brand h1 {
+      font-family: 'Orbitron', monospace !important;
+      letter-spacing: 0.18em !important;
+      font-size: 1.75rem !important;
+      background: linear-gradient(135deg, #ffffff, var(--nexus-cyan));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 16px var(--nexus-cyan-glow));
+    }
+
+    .auth-brand p {
+      font-family: 'Share Tech Mono', monospace !important;
+      font-size: 0.6875rem !important;
+      letter-spacing: 0.15em !important;
+      text-transform: uppercase;
+    }
+
+    .auth-brand-icon {
+      font-size: 2rem !important;
+      background: linear-gradient(135deg, var(--nexus-cyan), rgba(45,114,212,0.8)) !important;
+      box-shadow: 0 0 24px var(--nexus-cyan-glow) !important;
+    }
+
+    .btn-auth {
+      background: linear-gradient(135deg, var(--nexus-cyan), var(--accent-blue, #2d72d4)) !important;
+      color: #020408 !important;
+      font-weight: 700 !important;
+      box-shadow: 0 0 20px var(--nexus-cyan-glow) !important;
+    }
+    .btn-auth:hover {
+      box-shadow: 0 0 32px var(--nexus-cyan-glow) !important;
+    }
+
+    .auth-brand-sub-system {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.6rem;
+      color: rgba(0,255,231,0.4);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
     /* Single-column social grid override (Google only) */
     .social-grid-single { display: grid; grid-template-columns: 1fr; gap: 10px; margin-bottom: 20px; }
 
@@ -16,7 +69,7 @@
       gap: 10px;
       padding: 12px 18px;
       background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(45, 114, 212, 0.2);
+      border: 1px solid rgba(0, 255, 231, 0.2);
       border-radius: var(--radius-sm);
       color: var(--text-primary);
       font-family: var(--font-body);
@@ -27,10 +80,10 @@
       transition: var(--transition);
     }
     .btn-google:hover {
-      background: rgba(255, 255, 255, 0.09);
-      border-color: rgba(45, 114, 212, 0.4);
+      background: rgba(0, 255, 231, 0.06);
+      border-color: rgba(0, 255, 231, 0.4);
       transform: translateY(-1px);
-      box-shadow: 0 4px 16px rgba(45, 114, 212, 0.15);
+      box-shadow: 0 4px 16px rgba(0, 255, 231, 0.12);
       color: var(--text-primary);
     }
     .btn-google:active { transform: translateY(0); }
@@ -70,9 +123,10 @@
 
       <!-- Brand -->
       <div class="auth-brand">
-        <div class="auth-brand-icon">🛡️</div>
-        <h1>PhishGuard</h1>
+        <div class="auth-brand-icon">⬡</div>
+        <h1>NEXUS</h1>
         <p>Sign in to your account</p>
+        <div class="auth-brand-sub-system">CYBER THREAT INTELLIGENCE PLATFORM</div>
       </div>
 
       <!-- Flash messages -->
@@ -163,12 +217,13 @@
           </a>
         </div>
 
-        <button type="submit" class="btn-auth">Sign In</button>
+        <button type="submit" class="btn-auth">Sign In to NEXUS</button>
       </form>
 
       <!-- Footer -->
       <div class="auth-footer">
         Don't have an account? <a href="{{ url_for('register') }}">Create one</a>
+        &nbsp;·&nbsp; <a href="/">← Home</a>
       </div>
 
     </div><!-- /.auth-card -->
@@ -200,25 +255,44 @@
       resize();
       window.addEventListener('resize', resize);
 
-      function rand(min, max) { return Math.random() * (max - min) + min; }
+      const COLORS = ['rgba(0,255,231,', 'rgba(0,255,136,', 'rgba(45,114,212,'];
 
-      for (let i = 0; i < 55; i++) {
+      for (let i = 0; i < 65; i++) {
         particles.push({
-          x: rand(0, window.innerWidth),
-          y: rand(0, window.innerHeight),
-          r: rand(1, 2.5),
-          dx: rand(-0.25, 0.25),
-          dy: rand(-0.25, 0.25),
-          a: rand(0.1, 0.5),
+          x:  Math.random() * window.innerWidth,
+          y:  Math.random() * window.innerHeight,
+          r:  Math.random() * 1.8 + 0.4,
+          dx: (Math.random() - 0.5) * 0.3,
+          dy: (Math.random() - 0.5) * 0.3,
+          a:  Math.random() * 0.35 + 0.08,
+          color: COLORS[Math.floor(Math.random() * 3)],
         });
       }
 
       function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        /* Draw connections */
+        for (let i = 0; i < particles.length; i++) {
+          for (let j = i + 1; j < particles.length; j++) {
+            const p = particles[i], q = particles[j];
+            const dx = p.x - q.x, dy = p.y - q.y;
+            const d  = Math.sqrt(dx*dx + dy*dy);
+            if (d < 90) {
+              ctx.beginPath();
+              ctx.moveTo(p.x, p.y);
+              ctx.lineTo(q.x, q.y);
+              ctx.strokeStyle = `rgba(0,255,231,${0.06*(1-d/90)})`;
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
+          }
+        }
+
         particles.forEach(p => {
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(45, 114, 212, ${p.a})`;
+          ctx.fillStyle = p.color + p.a + ')';
           ctx.fill();
           p.x += p.dx;
           p.y += p.dy;

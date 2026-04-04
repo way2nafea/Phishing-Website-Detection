@@ -2,13 +2,11 @@
 # IMPORTS
 # =============================
 from flask import Flask, render_template, request, redirect, url_for, flash, \
-                  send_from_directory, jsonify                         # ← added jsonify
+                  send_from_directory, jsonify
 import os
 import json
 import datetime
 import numpy as np
-
-
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -50,7 +48,6 @@ from phishing_engine.security_checks import (
 from phishing_engine.ml_engine import PhishingModel
 from phishing_engine.google_check import check_google_safe_browsing
 
-# ← New intelligence engine imports
 from phishing_engine.intelligence import (
     get_live_phishing_feed,
     get_threat_advisories,
@@ -60,7 +57,7 @@ from phishing_engine.intelligence import (
 )
 
 from database import db
-from models import Scan, User, PhishReport                            # ← added PhishReport
+from models import Scan, User, PhishReport
 
 
 # =============================
@@ -77,7 +74,7 @@ db.init_app(app)
 bcrypt = Bcrypt(app)
 
 with app.app_context():
-    db.create_all()          # also creates phish_report table automatically
+    db.create_all()
     inspector = inspect(db.engine)
 
     if "scan" in inspector.get_table_names():
@@ -88,7 +85,6 @@ with app.app_context():
             if 'created_at' not in scan_columns:
                 conn.execute(text("ALTER TABLE scan ADD COLUMN created_at DATETIME"))
 
-    # Migrate phish_report.status column if upgrading from old schema
     if "phish_report" in inspector.get_table_names():
         report_cols = [c['name'] for c in inspector.get_columns('phish_report')]
         with db.engine.begin() as conn:
@@ -101,16 +97,7 @@ login_manager.login_view = "login"
 # Allow local dev over http for OAuth (remove in production)
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
-# ─── Google OAuth Configuration ───────────────────────────────────────────────
-# Required env vars:
-#   GOOGLE_OAUTH_CLIENT_ID     → your Google OAuth 2.0 Client ID
-#   GOOGLE_OAUTH_CLIENT_SECRET → your Google OAuth 2.0 Client Secret
-#
-# In Google Cloud Console → APIs & Credentials → OAuth 2.0 Client IDs
-# Add this Authorized Redirect URI:
-#   http://127.0.0.1:10000/login/google/authorized   ← local dev
-#   https://yourdomain.com/login/google/authorized   ← production
-# ──────────────────────────────────────────────────────────────────────────────
+# ─── Google OAuth Configuration ────────────────────────────────────────────────
 _google_client_id     = os.environ.get('GOOGLE_OAUTH_CLIENT_ID',     '').strip()
 _google_client_secret = os.environ.get('GOOGLE_OAUTH_CLIENT_SECRET', '').strip()
 
@@ -127,26 +114,19 @@ if not _google_client_id or not _google_client_secret:
     )
 
 google_blueprint = make_google_blueprint(
-    client_id=_google_client_id or None,       # None disables the blueprint gracefully
+    client_id=_google_client_id or None,
     client_secret=_google_client_secret or None,
     scope=[
         "openid",
         "https://www.googleapis.com/auth/userinfo.email",
         "https://www.googleapis.com/auth/userinfo.profile",
     ],
-    # NOTE: Do NOT pass redirect_url here.
-    # Flask-Dance automatically handles the callback at:
-    #   /login/google/authorized  (with url_prefix='/login' below)
-    # Register THAT exact URL in your Google Cloud Console.
 )
 
 app.register_blueprint(google_blueprint, url_prefix='/login')
 
 
-# ─── Google OAuth Signal Handler ──────────────────────────────────────────────
-# This fires AFTER Flask-Dance completes the token exchange with Google.
-# It is the correct, conflict-free way to handle post-auth logic.
-# ──────────────────────────────────────────────────────────────────────────────
+# ─── Google OAuth Signal Handler ───────────────────────────────────────────────
 @oauth_authorized.connect_via(google_blueprint)
 def google_logged_in(blueprint, token):
     if not token:
@@ -178,15 +158,11 @@ def google_logged_in(blueprint, token):
 
     login_user(user)
     flash("Logged in with Google successfully.", "success")
-
-    # Return False so Flask-Dance does NOT try to save the token to a DB session
-    # (we only use it transiently to fetch user info).
     return False
 
 
 @oauth_error.connect_via(google_blueprint)
 def google_error(blueprint, message, response):
-    """Catches errors returned by Google during the OAuth flow."""
     flash(f"Google OAuth error: {message}", "danger")
 
 
@@ -278,16 +254,10 @@ def analyze_message_text(message):
 
 
 def analyze_apk(apk_url=None, apk_file=None):
-    """
-    Heuristic-based APK analyser.
-    Handles both URL submissions and direct file uploads.
-    Returns a structured result compatible with security-suite.html.
-    """
     import re
     import zipfile
     import io
 
-    # ── Keyword lists ──────────────────────────────────────────────────────────
     MALICIOUS_URL_KEYWORDS = [
         "mod", "hack", "crack", "premium", "free", "unlocked",
         "cheat", "keygen", "patch", "nulled", "warez", "pirate",
@@ -319,7 +289,6 @@ def analyze_apk(apk_url=None, apk_file=None):
         "READ_PHONE_STATE", "USE_BIOMETRIC",
     ]
 
-    # ── Bootstrap report ──────────────────────────────────────────────────────
     report = {
         "apk_url":    apk_url   or "",
         "apk_file":   (apk_file.filename if apk_file and apk_file.filename else ""),
@@ -331,7 +300,6 @@ def analyze_apk(apk_url=None, apk_file=None):
     risk  = 0
     notes = []
 
-    # ── Helper: derive final status from risk score ────────────────────────────
     def _finalise(risk_score, notes):
         risk_score = max(0, min(100, risk_score))
         if risk_score >= 70:
@@ -342,13 +310,9 @@ def analyze_apk(apk_url=None, apk_file=None):
             status = "SAFE"
         return {"status": status, "risk_score": risk_score, "details": notes}
 
-    # ═════════════════════════════════════════════════════════════════════════
-    #  BRANCH A — APK URL analysis
-    # ═════════════════════════════════════════════════════════════════════════
     if apk_url and apk_url.strip():
         url_lower = apk_url.lower().strip()
 
-        # 1. Protocol check
         if url_lower.startswith("http://"):
             risk += 20
             notes.append("🔓 Insecure protocol (HTTP): APK served without encryption.")
@@ -358,7 +322,6 @@ def analyze_apk(apk_url=None, apk_file=None):
             risk += 15
             notes.append("⚠️ Unrecognised protocol in URL.")
 
-        # 2. Malicious keyword scan
         hit_malicious = [kw for kw in MALICIOUS_URL_KEYWORDS if kw in url_lower]
         if hit_malicious:
             risk += 50
@@ -367,32 +330,23 @@ def analyze_apk(apk_url=None, apk_file=None):
                 "These are strongly associated with pirated/trojanised APKs."
             )
 
-        # 3. Suspicious keyword scan (only if not already flagged malicious)
         if not hit_malicious:
             hit_suspicious = [kw for kw in SUSPICIOUS_URL_KEYWORDS if kw in url_lower]
             if hit_suspicious:
                 risk += 15
-                notes.append(
-                    f"⚠️ Suspicious keywords found in URL: {', '.join(hit_suspicious)}."
-                )
+                notes.append(f"⚠️ Suspicious keywords found in URL: {', '.join(hit_suspicious)}.")
 
-        # 4. File extension check
         if not url_lower.endswith(".apk"):
             risk += 10
             notes.append("⚠️ URL does not end with .apk — the file type cannot be confirmed.")
         else:
             notes.append("✅ URL ends with .apk extension.")
 
-        # 5. IP-address host check
-        ip_pattern = re.compile(
-            r"https?://(\d{1,3}\.){3}\d{1,3}",
-            re.IGNORECASE
-        )
+        ip_pattern = re.compile(r"https?://(\d{1,3}\.){3}\d{1,3}", re.IGNORECASE)
         if ip_pattern.match(url_lower):
             risk += 25
             notes.append("🚨 APK is hosted on a raw IP address — no domain identity, very high risk.")
 
-        # 6. Excessive subdomain check
         try:
             host = re.split(r"https?://", url_lower)[1].split("/")[0]
             subdomain_count = host.count(".")
@@ -405,12 +359,10 @@ def analyze_apk(apk_url=None, apk_file=None):
         except Exception:
             pass
 
-        # 7. Long URL check
         if len(apk_url) > 120:
             risk += 10
             notes.append("⚠️ Unusually long URL — obfuscation technique commonly used in phishing links.")
 
-        # 8. Summary note
         notes.append(
             "ℹ️ Analysis performed via heuristic URL inspection. "
             "For deeper analysis, upload the APK file directly."
@@ -421,21 +373,16 @@ def analyze_apk(apk_url=None, apk_file=None):
         result["apk_file"] = ""
         return result
 
-    # ═════════════════════════════════════════════════════════════════════════
-    #  BRANCH B — APK file upload analysis
-    # ═════════════════════════════════════════════════════════════════════════
     elif apk_file and apk_file.filename:
         filename    = apk_file.filename
         fname_lower = filename.lower()
 
-        # 1. Extension validation
         if not fname_lower.endswith(".apk"):
             risk += 30
             notes.append(f"🚨 Uploaded file '{filename}' is NOT an .apk file.")
         else:
             notes.append(f"✅ File extension confirmed: {filename}")
 
-        # 2. Filename keyword scan
         hit_fname = [kw for kw in MALICIOUS_URL_KEYWORDS if kw in fname_lower]
         if hit_fname:
             risk += 40
@@ -444,35 +391,27 @@ def analyze_apk(apk_url=None, apk_file=None):
                 "Strongly associated with repackaged/trojanised APKs."
             )
 
-        # 3. File size check
-        apk_file.seek(0, 2)          # seek to end
+        apk_file.seek(0, 2)
         file_size_mb = apk_file.tell() / (1024 * 1024)
-        apk_file.seek(0)             # rewind
+        apk_file.seek(0)
 
         if file_size_mb < 0.1:
             risk += 20
-            notes.append(
-                f"⚠️ File is very small ({file_size_mb:.2f} MB) — "
-                "legitimate apps are rarely this small; may be a stub/dropper."
-            )
+            notes.append(f"⚠️ File is very small ({file_size_mb:.2f} MB) — may be a stub/dropper.")
         elif file_size_mb > 150:
             risk += 10
-            notes.append(
-                f"⚠️ File is very large ({file_size_mb:.2f} MB) — "
-                "could indicate bundled malicious payloads."
-            )
+            notes.append(f"⚠️ File is very large ({file_size_mb:.2f} MB) — could indicate bundled malicious payloads.")
         else:
             notes.append(f"✅ File size looks normal ({file_size_mb:.2f} MB).")
 
-        # 4. ZIP/APK structure + manifest analysis
         raw_bytes = apk_file.read()
         apk_file.seek(0)
 
         try:
-            with zipfile.ZipFile(io.BytesIO(raw_bytes)) as zf:
+            import zipfile as zf_module
+            with zf_module.ZipFile(io.BytesIO(raw_bytes)) as zf:
                 namelist = zf.namelist()
 
-                # 4a. Mandatory APK entries
                 if "AndroidManifest.xml" not in namelist:
                     risk += 35
                     notes.append("🚨 AndroidManifest.xml missing — not a valid APK or deliberately stripped.")
@@ -487,34 +426,22 @@ def analyze_apk(apk_url=None, apk_file=None):
                     dex_count = sum(1 for n in namelist if n.endswith(".dex"))
                     if dex_count > 3:
                         risk += 15
-                        notes.append(
-                            f"⚠️ {dex_count} .dex files detected — "
-                            "multi-dex is legitimate but also used by sophisticated malware."
-                        )
+                        notes.append(f"⚠️ {dex_count} .dex files detected.")
                     else:
                         notes.append(f"✅ {dex_count} .dex bytecode file(s) found.")
 
-                # 4b. Suspicious native libraries
                 native_libs = [n for n in namelist if n.endswith(".so")]
                 if native_libs:
-                    notes.append(
-                        f"ℹ️ {len(native_libs)} native library/libraries (.so) found — "
-                        "normal for many apps but worth noting."
-                    )
+                    notes.append(f"ℹ️ {len(native_libs)} native library/libraries (.so) found.")
 
-                # 4c. Hidden / double-extension files
                 double_ext = [
                     n for n in namelist
                     if re.search(r"\.(jpg|png|gif|mp4|pdf)\.(apk|dex|so|jar)$", n, re.IGNORECASE)
                 ]
                 if double_ext:
                     risk += 30
-                    notes.append(
-                        f"🚨 Double-extension files detected: {double_ext[:3]} — "
-                        "classic technique to disguise malicious payloads as media files."
-                    )
+                    notes.append(f"🚨 Double-extension files detected: {double_ext[:3]}.")
 
-                # 4d. Raw manifest permission scan (binary heuristic)
                 try:
                     manifest_bytes = zf.read("AndroidManifest.xml").decode("latin-1")
                     found_dangerous = [p for p in DANGEROUS_PERMISSIONS if p in manifest_bytes]
@@ -538,34 +465,21 @@ def analyze_apk(apk_url=None, apk_file=None):
                             + (" …and more." if len(found_suspicious) > 6 else ".")
                         )
                 except Exception:
-                    notes.append(
-                        "ℹ️ Manifest is binary-encoded (AXML); "
-                        "deep permission parsing skipped — use a decompiler for full audit."
-                    )
+                    notes.append("ℹ️ Manifest is binary-encoded (AXML); deep permission parsing skipped.")
 
-                # 4e. Entry count
                 notes.append(f"ℹ️ APK archive contains {len(namelist)} total entries.")
 
-        except zipfile.BadZipFile:
-            risk += 40
-            notes.append("🚨 File is not a valid ZIP/APK archive — corrupted or disguised malware.")
         except Exception as exc:
-            notes.append(f"ℹ️ Archive inspection error: {exc}")
+            risk += 40
+            notes.append(f"🚨 Archive inspection error: {exc}")
 
-        # 5. Closing note
-        notes.append(
-            "ℹ️ Static heuristic analysis complete. "
-            "For definitive results, decompile with jadx/apktool and review source manually."
-        )
+        notes.append("ℹ️ Static heuristic analysis complete.")
 
         result = _finalise(risk, notes)
         result["apk_url"]  = ""
         result["apk_file"] = filename
         return result
 
-    # ═════════════════════════════════════════════════════════════════════════
-    #  BRANCH C — Nothing provided
-    # ═════════════════════════════════════════════════════════════════════════
     else:
         return {
             "apk_url":    "",
@@ -690,6 +604,57 @@ def assistant_suggestion(raw_url):
 
 
 # =============================
+# LANDING PAGE (PUBLIC)
+# =============================
+@app.route("/", methods=["GET"])
+def index():
+    """
+    NEXUS landing page.
+    - Logged in  → redirect to /dashboard
+    - Logged out → show landing page (index.html)
+    """
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard"))
+    return render_template("index.html")
+
+
+# =============================
+# URL SCANNER PAGE
+# =============================
+@app.route("/url-scanner", methods=["GET", "POST"])
+@login_required
+def url_scanner():
+    """
+    URL Scanner page — handles both GET (show form) and POST (scan & show result).
+    Renders scanner.html (the former index.html URL scanner template).
+    """
+    if request.method == "POST":
+        raw_url = request.form.get("url", "").strip()
+        if raw_url:
+            result = run_url_scan(raw_url)
+
+            new_scan = Scan(
+                url=raw_url,
+                risk_score=result.get("risk_score") or 0,
+                result=result.get("prediction", ""),
+                user_id=current_user.id
+            )
+            db.session.add(new_scan)
+            db.session.commit()
+
+            return render_template(
+                "scanner.html",
+                url=result["url"],
+                prediction=result["prediction"],
+                xx=result["xx"],
+                risk_score=result["risk_score"],
+                assistant_hint=None,
+            )
+
+    return render_template("scanner.html")
+
+
+# =============================
 # SMART ASSISTANT ROUTE
 # =============================
 @app.route("/assistant", methods=["GET", "POST"])
@@ -711,13 +676,11 @@ def assistant():
     if request.method == "GET" and request.args.get("url"):
         suggestion = assistant_suggestion(request.args.get("url"))
 
-    # ── Live intelligence data ──────────────────────────────────────────────
     top_phishing = get_live_phishing_feed(limit=14)
     threat_feed  = get_threat_advisories(count=4)
     cyber_news   = fetch_news(limit=6)
     feed_meta    = get_feed_meta()
 
-    # ── Community reports from DB (latest 20) ──────────────────────────────
     reported_phishes = (
         PhishReport.query
         .order_by(PhishReport.reported_on.desc())
@@ -750,7 +713,6 @@ def assistant_report():
         flash("Please provide a URL to report.", "danger")
         return redirect(url_for("assistant"))
 
-    # Prevent duplicate reports from the same user
     existing = PhishReport.query.filter_by(url=report_url, user_id=current_user.id).first()
     if existing:
         flash("You have already reported this URL. It is under review.", "info")
@@ -777,10 +739,6 @@ def assistant_report():
 @app.route("/api/intelligence")
 @login_required
 def api_intelligence():
-    """
-    Returns the latest feed data as JSON.
-    The front-end JS polls this every 60 s and updates the page without reload.
-    """
     try:
         phishing_feed = get_live_phishing_feed(limit=14)
         advisories    = get_threat_advisories(count=4)
@@ -812,7 +770,6 @@ def api_intelligence():
 @app.route("/api/refresh-feeds", methods=["POST"])
 @login_required
 def refresh_feeds():
-    """Force-refresh all intelligence caches. Protect this endpoint in production."""
     try:
         invalidate_all_caches()
         return jsonify({
@@ -826,7 +783,6 @@ def refresh_feeds():
 @app.route("/assistant/report/<int:report_id>/status", methods=["POST"])
 @login_required
 def update_report_status(report_id):
-    """Admin endpoint to update the moderation status of a community report."""
     try:
         new_status = request.form.get("status", "pending")
         if new_status not in ("pending", "verified", "malicious", "safe"):
@@ -887,22 +843,14 @@ def apk_checker():
 
 
 # =============================
-# MAIN SCAN ROUTE
-# =============================
-@app.route("/", methods=["GET"])
-@login_required
-def index():
-    return redirect(url_for("security_suite"))
-
-
-# =============================
 # REGISTER
 # =============================
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard"))
 
     if request.method == "POST":
-
         username = request.form.get("username")
         email    = request.form.get("email")
         password = request.form.get("password")
@@ -934,11 +882,13 @@ def register():
 # =============================
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    # Warn if Google OAuth env vars are missing so it shows in the UI
+    # Already logged in → send to dashboard
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard"))
+
     google_configured = bool(_google_client_id and _google_client_secret)
 
     if request.method == "POST":
-
         email    = request.form.get("email")
         password = request.form.get("password")
 
@@ -946,28 +896,14 @@ def login():
 
         if user and bcrypt.check_password_hash(user.password, password):
             login_user(user)
-            flash("Login successful!", "success")
-            return redirect(url_for("assistant"))
+            flash("Welcome back to NEXUS!", "success")
+            # Redirect to the page they tried to access, or dashboard
+            next_page = request.args.get("next")
+            return redirect(next_page or url_for("dashboard"))
 
         flash("Invalid email or password.", "danger")
 
     return render_template("login.html", google_configured=google_configured)
-
-
-# ─── NOTE: There is NO custom @app.route('/login/google') here.
-# Flask-Dance already registers /login/google as the OAuth initiation route
-# when the blueprint is registered with url_prefix='/login'.
-# Defining a second route at the same path would cause a Flask routing conflict
-# and is one of the root causes of the "Missing required parameter: client_id" error.
-#
-# The full Google OAuth flow:
-#   1. User clicks "Sign in with Google" → links to url_for('google.login')
-#      which resolves to /login/google
-#   2. Flask-Dance redirects to Google's consent screen
-#   3. Google redirects back to /login/google/authorized
-#   4. Flask-Dance exchanges the code for a token
-#   5. The @oauth_authorized signal fires → google_logged_in() above runs
-#   6. User is logged in and redirected to /assistant
 
 
 # =============================
@@ -977,8 +913,8 @@ def login():
 @login_required
 def logout():
     logout_user()
-    flash("You have been logged out.", "info")
-    return redirect(url_for("login"))
+    flash("You have been logged out of NEXUS.", "info")
+    return redirect(url_for("index"))
 
 
 # =============================
@@ -1014,7 +950,6 @@ def reset_password():
 # =============================
 @app.route('/auth/<provider>')
 def social_login(provider):
-    """Fallback route; real Google login goes through Flask-Dance at /login/google."""
     if provider == 'google':
         return redirect(url_for('google.login'))
 
@@ -1046,7 +981,6 @@ def google_verification():
 @app.route("/threat-map")
 @login_required
 def threat_map():
-    """Render the real-time global threat map page."""
     return render_template("threat_map.html")
 
 
@@ -1056,8 +990,79 @@ def threat_map():
 @app.route("/globe")
 @login_required
 def globe():
-    """Render the 3D rotating threat globe page."""
     return render_template("globe.html")
+
+
+# =============================
+# LOCATION SEARCH API
+# =============================
+@app.route("/search_location")
+@login_required
+def search_location():
+    import json as _json
+    import os as _os
+
+    query = request.args.get("q", "").strip().lower()
+    if not query:
+        return jsonify({"error": "Query parameter q is required"}), 400
+
+    locations_path = _os.path.join(app.static_folder, "data", "locations.json")
+    try:
+        with open(locations_path, "r", encoding="utf-8") as f:
+            loc_data = _json.load(f)
+    except (FileNotFoundError, _json.JSONDecodeError):
+        return jsonify({"error": "Location database not available"}), 503
+
+    results = []
+
+    for city in loc_data.get("cities", []):
+        name    = city.get("name", "")
+        country = city.get("country", "")
+        if query in name.lower() or query in country.lower():
+            score = 20 if name.lower() == query else (15 if name.lower().startswith(query) else 8)
+            results.append({
+                "name": name, "country": country,
+                "continent": city.get("continent", ""),
+                "lat": city["lat"], "lng": city["lng"],
+                "type": "city", "_score": score,
+            })
+
+    for country in loc_data.get("countries", []):
+        name = country.get("name", "")
+        if query in name.lower():
+            score = 20 if name.lower() == query else (15 if name.lower().startswith(query) else 8)
+            results.append({
+                "name": name, "country": name,
+                "continent": country.get("continent", ""),
+                "lat": country["lat"], "lng": country["lng"],
+                "type": "country", "_score": score,
+            })
+
+    for continent in loc_data.get("continents", []):
+        name = continent.get("name", "")
+        if query in name.lower():
+            score = 20 if name.lower() == query else 10
+            results.append({
+                "name": name, "country": "",
+                "continent": name,
+                "lat": continent["lat"], "lng": continent["lng"],
+                "type": "continent", "_score": score,
+            })
+
+    if not results:
+        return jsonify({"error": "Location not found", "query": query}), 404
+
+    results.sort(key=lambda x: -x.pop("_score", 0))
+    best = results[0]
+    return jsonify({
+        "name":      best["name"],
+        "country":   best.get("country", ""),
+        "continent": best.get("continent", ""),
+        "lat":       best["lat"],
+        "lng":       best["lng"],
+        "type":      best["type"],
+        "all":       results[:10],
+    })
 
 
 # =============================
@@ -1066,20 +1071,9 @@ def globe():
 @app.route("/api/threat-map")
 @login_required
 def api_threat_map():
-    """
-    Returns up to 20 recent threat events as JSON for the live threat map.
-
-    Priority:
-      1. Real scan data from scans.db (with simulated geo-coords by TLD heuristic)
-      2. Simulated realistic threat data when DB is sparse
-
-    Response schema per item:
-      { country, city, lat, lng, threat, severity, time }
-    """
     import random
     from datetime import datetime, timedelta
 
-    # ── Simulated threat pool (realistic global distribution) ──────────────
     SIMULATED_THREATS = [
         {"country": "India",          "city": "Mumbai",      "lat": 19.0760,  "lng": 72.8777,   "threat": "Phishing URL",          "severity": "HIGH"},
         {"country": "United States",  "city": "New York",    "lat": 40.7128,  "lng": -74.0060,  "threat": "Credential Harvesting",  "severity": "HIGH"},
@@ -1117,7 +1111,6 @@ def api_threat_map():
         results = []
         now = datetime.utcnow()
 
-        # ── Pull real scans from DB ─────────────────────────────────────────
         real_scans = Scan.query.order_by(Scan.id.desc()).limit(50).all()
 
         real_entries = []
@@ -1125,7 +1118,6 @@ def api_threat_map():
             if not scan.url:
                 continue
 
-            # Determine severity from risk_score
             score = scan.risk_score or 0
             if score >= 70:
                 severity = "HIGH"
@@ -1134,11 +1126,9 @@ def api_threat_map():
             else:
                 severity = "LOW"
 
-            # Skip very safe URLs for the threat map
             if severity == "LOW" and score < 20:
                 continue
 
-            # Determine threat type from result text
             result_text = (scan.result or "").lower()
             if "phishing" in result_text:
                 threat_type = "Phishing URL"
@@ -1155,12 +1145,8 @@ def api_threat_map():
             else:
                 threat_type = "Phishing URL"
 
-            # Use a random realistic location for real scans
-            # (geolocation of actual IPs would require ip-api.com calls)
             loc = random.choice(SIMULATED_THREATS)
-
-            # Use scan timestamp if available
-            ts = now - timedelta(minutes=random.randint(1, 120))
+            ts  = now - datetime.timedelta(minutes=random.randint(1, 120))
             if hasattr(scan, 'created_at') and scan.created_at:
                 ts = scan.created_at
 
@@ -1176,14 +1162,12 @@ def api_threat_map():
 
         results.extend(real_entries[:10])
 
-        # ── Fill up to 20 with simulated threats ───────────────────────────
         needed = max(0, 15 - len(results))
         if needed > 0:
             pool = random.sample(SIMULATED_THREATS, min(needed, len(SIMULATED_THREATS)))
             for item in pool:
                 minutes_ago = random.randint(1, 180)
-                ts = now - timedelta(minutes=minutes_ago)
-                # Add slight coordinate jitter so overlapping cities spread out
+                ts = now - datetime.timedelta(minutes=minutes_ago)
                 results.append({
                     "country":  item["country"],
                     "city":     item["city"],
@@ -1194,7 +1178,6 @@ def api_threat_map():
                     "time":     ts.isoformat(),
                 })
 
-        # ── Limit and shuffle ──────────────────────────────────────────────
         random.shuffle(results)
         results = results[:20]
 

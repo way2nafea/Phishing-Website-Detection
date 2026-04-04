@@ -1,410 +1,911 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>URL Scanner — PhishGuard AI</title>
-  <meta name="description" content="Check if a website URL is safe or phishing using machine learning, Google Safe Browsing, and SSL analysis.">
-  <meta name="keywords" content="phishing checker, url safety, website security, phishing detection">
-  <meta name="author" content="Team Apex">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NEXUS — Cyber Threat Intelligence Platform</title>
+  <meta name="description" content="NEXUS: Real-Time Cyber Threat Intelligence & Phishing Detection System powered by ML, DNS analysis, and Google Safe Browsing." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" />
+
   <style>
-    /* Pulse rings animation for scan button */
-    @keyframes scanPulse {
-      0%   { transform: scale(1); opacity: 0.8; }
-      100% { transform: scale(2.2); opacity: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-void:      #020408;
+      --bg-deep:      #060d16;
+      --bg-panel:     rgba(8, 18, 32, 0.85);
+      --cyan:         #00ffe7;
+      --cyan-dim:     rgba(0, 255, 231, 0.12);
+      --cyan-glow:    rgba(0, 255, 231, 0.35);
+      --green:        #00ff88;
+      --green-dim:    rgba(0, 255, 136, 0.1);
+      --blue:         #2d72d4;
+      --blue-dim:     rgba(45, 114, 212, 0.15);
+      --danger:       #ff4560;
+      --text-primary: #e8f4ff;
+      --text-sec:     #7a9bbf;
+      --text-muted:   #3d5a7a;
+      --border:       rgba(0, 255, 231, 0.08);
+      --border-glow:  rgba(0, 255, 231, 0.25);
+      --font-display: 'Orbitron', monospace;
+      --font-mono:    'Share Tech Mono', monospace;
+      --font-body:    'Inter', sans-serif;
     }
-    .scan-pulse-wrap {
-      position: relative;
-      display: inline-block;
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg-void);
+      color: var(--text-primary);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
     }
-    .scan-pulse-wrap .ring {
-      position: absolute;
+
+    /* ─── CANVAS BACKGROUND ─── */
+    #nexus-canvas {
+      position: fixed;
       inset: 0;
-      border-radius: var(--radius-sm);
-      border: 2px solid var(--accent-blue);
-      animation: scanPulse 1.4s ease-out infinite;
+      z-index: 0;
       pointer-events: none;
-      opacity: 0;
-    }
-    .scan-pulse-wrap .ring:nth-child(2) { animation-delay: 0.4s; }
-    .scan-pulse-wrap .ring:nth-child(3) { animation-delay: 0.8s; }
-    .btn-scan.scanning .ring { opacity: 1; }
-
-    /* Result card pulsing border for phishing */
-    .result-card.phishing {
-      animation: slideInUp 0.4s ease, dangerPulse 3s ease-in-out 0.5s infinite;
-    }
-    @keyframes dangerPulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(255,69,96,0); }
-      50%       { box-shadow: 0 0 0 4px rgba(255,69,96,0.12); }
     }
 
-    /* Scan history mini preview */
-    .recent-scans-row {
+    /* ─── GRID OVERLAY ─── */
+    .grid-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(0,255,231,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,231,0.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+    }
+
+    /* ─── NAV ─── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 48px;
+      background: rgba(2, 4, 8, 0.7);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
     }
-    .recent-tag {
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+    .nav-brand-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      box-shadow: 0 0 16px var(--cyan-glow);
+    }
+    .nav-brand-text {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      color: var(--cyan);
+      text-shadow: 0 0 20px var(--cyan-glow);
+    }
+    .nav-brand-sub {
+      font-family: var(--font-mono);
+      font-size: 0.625rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      display: block;
+      margin-top: -2px;
+    }
+
+    .nav-links {
       display: flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 10px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border-subtle);
+      list-style: none;
+    }
+    .nav-links a {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--text-sec);
+      text-decoration: none;
+      border-radius: 6px;
+      transition: all 0.2s;
+      letter-spacing: 0.03em;
+    }
+    .nav-links a:hover { color: var(--cyan); background: var(--cyan-dim); }
+    .nav-links .btn-nav-cta {
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      color: #020408 !important;
+      font-weight: 600;
+      box-shadow: 0 0 20px var(--cyan-glow);
+    }
+    .nav-links .btn-nav-cta:hover {
+      box-shadow: 0 0 32px var(--cyan-glow);
+      background: var(--cyan-dim) !important;
+      color: var(--cyan) !important;
+    }
+
+    /* ─── SECTIONS ─── */
+    section { position: relative; z-index: 1; }
+
+    /* ─── HERO ─── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 120px 24px 80px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      background: var(--cyan-dim);
+      border: 1px solid var(--border-glow);
+      border-radius: 50px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--cyan);
+      letter-spacing: 0.08em;
+      margin-bottom: 32px;
+      animation: fadeInDown 0.6s ease both;
+    }
+    .hero-badge .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: blink 1.4s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .hero-title {
+      font-family: var(--font-display);
+      font-size: clamp(4rem, 10vw, 8.5rem);
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      line-height: 1;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #ffffff 0%, var(--cyan) 50%, var(--blue) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: none;
+      filter: drop-shadow(0 0 40px var(--cyan-glow));
+      animation: fadeInUp 0.7s ease 0.1s both;
+    }
+
+    .hero-sub-title {
+      font-family: var(--font-mono);
+      font-size: clamp(0.7rem, 1.5vw, 0.875rem);
+      color: var(--text-muted);
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+      animation: fadeInUp 0.7s ease 0.2s both;
+    }
+
+    .hero-tagline {
+      font-size: clamp(1rem, 2vw, 1.25rem);
+      color: var(--text-sec);
+      max-width: 560px;
+      line-height: 1.7;
+      margin: 0 auto 52px;
+      animation: fadeInUp 0.7s ease 0.3s both;
+    }
+    .hero-tagline strong { color: var(--cyan); font-weight: 600; }
+
+    .hero-cta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      justify-content: center;
+      animation: fadeInUp 0.7s ease 0.4s both;
+      margin-bottom: 80px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 14px 28px;
+      border-radius: 8px;
+      font-family: var(--font-body);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+      transition: all 0.25s ease;
+      letter-spacing: 0.02em;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      color: #020408;
+      box-shadow: 0 0 28px var(--cyan-glow), 0 4px 16px rgba(0,0,0,0.5);
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 0 40px var(--cyan-glow), 0 8px 24px rgba(0,0,0,0.5);
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--text-primary);
+      border: 1px solid var(--border-glow);
+    }
+    .btn-outline:hover {
+      background: var(--cyan-dim);
+      color: var(--cyan);
+      border-color: var(--cyan);
+      transform: translateY(-2px);
+    }
+
+    .btn-ghost {
+      background: rgba(255,255,255,0.04);
+      color: var(--text-sec);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+    .btn-ghost:hover {
+      background: rgba(255,255,255,0.07);
+      color: var(--text-primary);
+      transform: translateY(-2px);
+    }
+
+    /* Stats strip */
+    .hero-stats {
+      display: flex;
+      gap: 48px;
+      justify-content: center;
+      flex-wrap: wrap;
+      animation: fadeInUp 0.7s ease 0.5s both;
+    }
+    .stat-item { text-align: center; }
+    .stat-value {
+      font-family: var(--font-display);
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: var(--cyan);
+      text-shadow: 0 0 20px var(--cyan-glow);
+      display: block;
+    }
+    .stat-label {
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+
+    /* ─── FEATURES SECTION ─── */
+    .section {
+      padding: 100px 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--cyan);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 3vw, 2.25rem);
+      font-weight: 700;
+      text-align: center;
+      letter-spacing: 0.06em;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+    }
+    .section-sub {
+      text-align: center;
+      color: var(--text-sec);
+      max-width: 500px;
+      margin: 0 auto 60px;
+      line-height: 1.7;
+      font-size: 0.9375rem;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 20px;
+    }
+
+    .feature-card {
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 32px 28px;
+      cursor: default;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .feature-card:hover {
+      border-color: var(--border-glow);
+      transform: translateY(-4px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5), 0 0 32px rgba(0,255,231,0.06);
+    }
+    .feature-card:hover::before { opacity: 1; }
+
+    .feature-icon {
+      width: 52px; height: 52px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.25rem;
+      margin-bottom: 20px;
+    }
+    .feature-icon.cyan  { background: var(--cyan-dim); color: var(--cyan); box-shadow: 0 0 20px rgba(0,255,231,0.1); }
+    .feature-icon.green { background: var(--green-dim); color: var(--green); box-shadow: 0 0 20px rgba(0,255,136,0.1); }
+    .feature-icon.blue  { background: var(--blue-dim); color: #6ea8f7; box-shadow: 0 0 20px rgba(45,114,212,0.15); }
+    .feature-icon.red   { background: rgba(255,69,96,0.1); color: #ff8fa0; }
+
+    .feature-title {
+      font-family: var(--font-display);
+      font-size: 0.875rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+    }
+    .feature-desc {
+      font-size: 0.875rem;
+      color: var(--text-sec);
+      line-height: 1.65;
+    }
+    .feature-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 18px;
+      font-size: 0.8125rem;
+      font-family: var(--font-mono);
+      color: var(--cyan);
+      text-decoration: none;
+      opacity: 0.7;
+      transition: opacity 0.2s;
+    }
+    .feature-link:hover { opacity: 1; }
+
+    /* ─── DIVIDER ─── */
+    .section-divider {
+      position: relative;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-glow), transparent);
+      margin: 0 48px;
+    }
+
+    /* ─── HOW IT WORKS ─── */
+    .how-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0;
+      position: relative;
+    }
+    .how-grid::before {
+      content: '';
+      position: absolute;
+      top: 32px; left: calc(16.67% + 16px); right: calc(16.67% + 16px);
+      height: 2px;
+      background: linear-gradient(90deg, var(--cyan), var(--blue), var(--green));
+      z-index: 0;
+    }
+
+    .how-step {
+      text-align: center;
+      padding: 24px 20px;
+      position: relative;
+      z-index: 1;
+    }
+    .how-step-num {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      background: var(--bg-deep);
+      border: 2px solid var(--border-glow);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      font-family: var(--font-display);
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--cyan);
+      box-shadow: 0 0 24px var(--cyan-glow);
+      position: relative;
+    }
+    .how-step:nth-child(2) .how-step-num { color: var(--blue); border-color: rgba(45,114,212,0.4); box-shadow: 0 0 24px rgba(45,114,212,0.3); }
+    .how-step:nth-child(3) .how-step-num { color: var(--green); border-color: rgba(0,255,136,0.4); box-shadow: 0 0 24px rgba(0,255,136,0.3); }
+
+    .how-step-title {
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+      font-weight: 600;
+    }
+    .how-step-desc {
+      font-size: 0.875rem;
+      color: var(--text-sec);
+      line-height: 1.6;
+    }
+
+    /* ─── CTA SECTION ─── */
+    .cta-section {
+      padding: 100px 24px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    .cta-glow {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 600px; height: 600px;
+      background: radial-gradient(circle, rgba(0,255,231,0.06) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .cta-card {
+      max-width: 700px;
+      margin: 0 auto;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-glow);
       border-radius: 20px;
+      padding: 64px 48px;
+      position: relative;
+      box-shadow: 0 0 60px rgba(0,0,0,0.8), 0 0 80px rgba(0,255,231,0.04);
+    }
+    .cta-card::before {
+      content: '';
+      position: absolute;
+      top: -1px; left: 20%; right: 20%;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+    }
+
+    .cta-icon {
+      font-size: 3rem;
+      margin-bottom: 24px;
+      display: block;
+      filter: drop-shadow(0 0 20px var(--cyan-glow));
+    }
+    .cta-title {
+      font-family: var(--font-display);
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+    }
+    .cta-desc {
+      color: var(--text-sec);
+      line-height: 1.7;
+      margin-bottom: 36px;
+      font-size: 0.9375rem;
+    }
+    .cta-btns {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* ─── FOOTER ─── */
+    footer {
+      position: relative;
+      z-index: 1;
+      text-align: center;
+      padding: 32px 24px;
+      border-top: 1px solid var(--border);
       font-family: var(--font-mono);
       font-size: 0.75rem;
       color: var(--text-muted);
-      cursor: pointer;
-      transition: var(--transition);
-      max-width: 200px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      letter-spacing: 0.05em;
     }
-    .recent-tag:hover {
-      border-color: var(--border-glow);
-      color: var(--text-primary);
+    footer .footer-brand {
+      color: var(--cyan);
+      font-weight: 600;
     }
-    .recent-tag .dot {
-      width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+
+    /* ─── ANIMATIONS ─── */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Scan line effect */
+    .scan-line {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      animation: scanLine 8s linear infinite;
+      opacity: 0.35;
+      z-index: 200;
+      pointer-events: none;
+    }
+    @keyframes scanLine {
+      0%   { top: 0%; opacity: 0.35; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 768px) {
+      nav { padding: 14px 20px; }
+      .nav-links { gap: 4px; }
+      .nav-links a { padding: 7px 12px; font-size: 0.75rem; }
+      .how-grid { grid-template-columns: 1fr; }
+      .how-grid::before { display: none; }
+      .cta-card { padding: 40px 24px; }
+    }
+    @media (max-width: 500px) {
+      .nav-links .hide-mobile { display: none; }
     }
   </style>
 </head>
 <body>
-<div class="app-layout">
 
-  <!-- Sidebar -->
-  <aside class="sidebar" id="sidebar">
-    <a href="{{ url_for('index') }}" class="sidebar-brand">
-      <div class="sidebar-brand-icon">🛡️</div>
-      <div class="sidebar-brand-name">
-        PhishGuard AI
-        <span>Detection System</span>
+  <!-- Scanline effect -->
+  <div class="scan-line"></div>
+
+  <!-- Background -->
+  <canvas id="nexus-canvas"></canvas>
+  <div class="grid-overlay"></div>
+
+  <!-- ─── NAV ─── -->
+  <nav>
+    <a href="#" class="nav-brand">
+      <div class="nav-brand-icon">⬡</div>
+      <div>
+        <span class="nav-brand-text">NEXUS</span>
+        <span class="nav-brand-sub">THREAT INTELLIGENCE</span>
       </div>
     </a>
-    <nav class="sidebar-nav">
-      <span class="nav-section-label">Main</span>
-      <a href="{{ url_for('index') }}" class="sidebar-link active">
-        <span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
-        URL Scanner
+    <ul class="nav-links">
+      <li class="hide-mobile"><a href="{{ url_for('dashboard') }}"><i class="fa-solid fa-chart-line"></i> Dashboard</a></li>
+      <li class="hide-mobile"><a href="{{ url_for('globe') }}"><i class="fa-solid fa-globe"></i> Globe</a></li>
+      <li class="hide-mobile"><a href="{{ url_for('security_suite') }}"><i class="fa-solid fa-shield-halved"></i> Scanner</a></li>
+      <li>
+        {% if current_user and current_user.is_authenticated %}
+          <a href="{{ url_for('dashboard') }}" class="btn-nav-cta btn">
+            <i class="fa-solid fa-gauge-high"></i> Dashboard
+          </a>
+        {% else %}
+          <a href="{{ url_for('login') }}" class="btn-nav-cta btn">
+            <i class="fa-solid fa-right-to-bracket"></i> Sign In
+          </a>
+        {% endif %}
+      </li>
+    </ul>
+  </nav>
+
+  <!-- ─── HERO ─── -->
+  <section class="hero">
+    <div class="hero-badge">
+      <span class="dot"></span>
+      SYSTEM ONLINE — THREAT INTEL ACTIVE
+    </div>
+
+    <h1 class="hero-title">NEXUS</h1>
+    <p class="hero-sub-title">Cyber Threat Intelligence &amp; Phishing Detection System</p>
+
+    <p class="hero-tagline">
+      <strong>Real-Time</strong> cyber threat intelligence powered by machine learning,
+      DNS analysis, SSL verification &amp; Google Safe Browsing API.
+    </p>
+
+    <div class="hero-cta">
+      <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+        <i class="fa-solid fa-gauge-high"></i> Explore Dashboard
       </a>
-      <a href="{{ url_for('dashboard') }}" class="sidebar-link">
-        <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>
-        Dashboard
+      <a href="{{ url_for('globe') }}" class="btn btn-outline">
+        <i class="fa-solid fa-globe"></i> View Globe
       </a>
-      <a href="{{ url_for('assistant') }}" class="sidebar-link">
-        <span class="nav-icon"><i class="fa-solid fa-robot"></i></span>
-        AI Assistant
+      <a href="{{ url_for('security_suite') }}" class="btn btn-ghost">
+        <i class="fa-solid fa-magnifying-glass"></i> Scan URL
       </a>
-      <a href="{{ url_for('security_suite') }}" class="sidebar-link">
-        <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>
-        Security Suite
-      </a>
-      <span class="nav-section-label">Threat Intel</span>
-      <a href="{{ url_for('threat_map') }}" class="sidebar-link">
-        <span class="nav-icon"><i class="fa-solid fa-map"></i></span>
-        2D Threat Map
-        <span class="nav-badge">LIVE</span>
-      </a>
-      <a href="{{ url_for('globe') }}" class="sidebar-link">
-        <span class="nav-icon"><i class="fa-solid fa-globe"></i></span>
-        3D Globe
-        <span class="nav-badge" style="background:rgba(0,255,198,0.12);color:var(--accent-cyan);border-color:rgba(0,255,198,0.25)">NEW</span>
-      </a>
-      <span class="nav-section-label">Account</span>
-      <a href="{{ url_for('logout') }}" class="sidebar-link danger-link">
-        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
-        Logout
-      </a>
-    </nav>
-    <div class="sidebar-footer">
-      <div class="status-badge">
-        <div class="status-dot"></div>
-        ML Engine Online
+    </div>
+
+    <div class="hero-stats">
+      <div class="stat-item">
+        <span class="stat-value" data-target="99.2">0</span>
+        <span class="stat-label">Detection Accuracy %</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" data-target="1.2">0</span>
+        <span class="stat-label">Avg Scan Time (sec)</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" data-target="5">0</span>
+        <span class="stat-label">Security Layers</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" data-target="24">0</span>
+        <span class="stat-label">7 Live Threat Feed</span>
       </div>
     </div>
-  </aside>
+  </section>
 
-  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+  <div class="section-divider"></div>
 
-  <div class="main-content">
+  <!-- ─── FEATURES ─── -->
+  <div class="section">
+    <p class="section-label">// core capabilities</p>
+    <h2 class="section-title">INTELLIGENCE MODULES</h2>
+    <p class="section-sub">Four integrated threat detection engines working in parallel to protect you in real-time.</p>
 
-    <!-- Topbar -->
-    <header class="topbar">
-      <div class="topbar-left">
-        <button class="sidebar-toggle" id="sidebarToggle">
-          <i class="fa-solid fa-bars"></i>
-        </button>
-        <div>
-          <div class="topbar-title">URL Scanner</div>
-          <div class="topbar-breadcrumb">ML-powered phishing detection</div>
-        </div>
-      </div>
-      <div class="topbar-right">
-        <div class="topbar-pill">
-          <div class="status-dot"></div>
-          AI Model Active
-        </div>
-        <a href="{{ url_for('logout') }}" class="topbar-btn">
-          <i class="fa-solid fa-right-from-bracket"></i>
-          Logout
+    <div class="features-grid">
+
+      <div class="feature-card">
+        <div class="feature-icon cyan"><i class="fa-solid fa-globe"></i></div>
+        <div class="feature-title">3D THREAT GLOBE</div>
+        <p class="feature-desc">Visualize live cyber attacks on an interactive WebGL globe. Watch threat vectors propagate across the world in real-time with geographic attribution.</p>
+        <a href="{{ url_for('globe') }}" class="feature-link">
+          <i class="fa-solid fa-arrow-right"></i> Launch Globe
         </a>
-        <div class="topbar-avatar" title="{{ current_user.username }}">
-          {{ current_user.username[0].upper() }}
-        </div>
-      </div>
-    </header>
-
-    <div class="page-body">
-
-      <div class="page-header fade-in">
-        <h1>URL Scanner</h1>
-        <p>Analyze any URL using ML models, DNS checks, SSL verification, and Google Safe Browsing.</p>
       </div>
 
-      <!-- Flash messages -->
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          <div class="flash-list fade-in">
-            {% for category, message in messages %}
-              <div class="flash-msg {{ category }}">
-                <i class="fa-solid {{ 'fa-circle-check' if category == 'success' else 'fa-triangle-exclamation' }}"></i>
-                {{ message }}
-              </div>
-            {% endfor %}
-          </div>
-        {% endif %}
-      {% endwith %}
-
-      <!-- Scan input card -->
-      <div class="scan-section fade-in" id="scanSection">
-        <div class="scan-label">
-          <i class="fa-solid fa-radar" style="color:var(--accent-cyan)"></i>
-          Target URL Analysis
-        </div>
-
-        <form action="/" method="POST" id="scanForm">
-          <div class="scan-input-row">
-            <div class="scan-input-wrap">
-              <i class="fa-solid fa-link scan-icon"></i>
-              <input
-                type="text"
-                name="url"
-                id="urlInput"
-                value="{{ url if url is defined else request.args.get('url', '') }}"
-                placeholder="https://example.com — Paste any URL to analyze"
-                required
-                autocomplete="off"
-                spellcheck="false"
-              >
-            </div>
-            <div class="scan-pulse-wrap" id="scanWrap">
-              <div class="ring"></div>
-              <div class="ring"></div>
-              <button type="submit" class="btn-scan" id="scanBtn">
-                <i class="fa-solid fa-shield-halved"></i>
-                <span id="scanBtnText">Analyze URL</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Loader -->
-          <div class="scan-loader" id="scanLoader">
-            <div class="spin-ring"></div>
-            <div>
-              <span style="color:var(--text-primary);font-weight:500">Scanning URL…</span>
-              <br>
-              <span style="font-size:0.8125rem;font-family:var(--font-mono)" id="loaderStep">Initializing security checks</span>
-            </div>
-          </div>
-        </form>
-
-        <!-- Analysis capability tags -->
-        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:18px">
-          <span class="pill blue"><i class="fa-solid fa-brain" style="margin-right:4px"></i>ML Model</span>
-          <span class="pill blue"><i class="fa-solid fa-certificate" style="margin-right:4px"></i>SSL Check</span>
-          <span class="pill blue"><i class="fa-brands fa-google" style="margin-right:4px"></i>Safe Browsing</span>
-          <span class="pill blue"><i class="fa-solid fa-server" style="margin-right:4px"></i>DNS Lookup</span>
-          <span class="pill blue"><i class="fa-solid fa-clock" style="margin-right:4px"></i>Domain Age</span>
-        </div>
+      <div class="feature-card">
+        <div class="feature-icon green"><i class="fa-solid fa-magnifying-glass-chart"></i></div>
+        <div class="feature-title">URL SCANNER</div>
+        <p class="feature-desc">ML-powered phishing detection combining DNS lookup, SSL certificate analysis, domain age verification, and Google Safe Browsing API checks.</p>
+        <a href="{{ url_for('security_suite') }}" class="feature-link">
+          <i class="fa-solid fa-arrow-right"></i> Scan a URL
+        </a>
       </div>
 
-      <!-- Result Section -->
-      {% if url is defined and prediction %}
-        {% if xx == 1 %}
-          {% set result_type = 'safe' %}
-          {% set result_icon = '✅' %}
-          {% set result_text = 'Website is SAFE' %}
-        {% elif xx == 0 %}
-          {% set result_type = 'suspicious' %}
-          {% set result_icon = '⚠️' %}
-          {% set result_text = 'Website is SUSPICIOUS' %}
-        {% else %}
-          {% set result_type = 'phishing' %}
-          {% set result_icon = '🚨' %}
-          {% set result_text = 'PHISHING DETECTED' %}
-        {% endif %}
-
-        {% set score = risk_score if risk_score is not none else 0 %}
-
-        <div class="result-card {{ result_type }} fade-in" id="resultCard">
-          <div class="result-card-top">
-            <div class="result-status-icon">{{ result_icon }}</div>
-            <div class="result-verdict">
-              <div class="result-verdict-label">{{ result_text }}</div>
-              <div class="result-url">{{ url }}</div>
-            </div>
-            <div>
-              {% if xx == 1 %}
-                <span class="pill safe">SAFE</span>
-              {% elif xx == 0 %}
-                <span class="pill suspicious">SUSPICIOUS</span>
-              {% else %}
-                <span class="pill phishing">PHISHING</span>
-              {% endif %}
-            </div>
-          </div>
-
-          <div class="result-card-body">
-            <div class="risk-score-row">
-              <span class="risk-label-text">Risk Score</span>
-              <div class="risk-track">
-                <div class="risk-fill" id="riskFill" data-risk="{{ score }}"></div>
-              </div>
-              <span class="risk-value-text">{{ score|int }}%</span>
-            </div>
-
-            <div style="margin-top:10px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05)">
-              <p style="font-size:0.875rem;color:var(--text-secondary);line-height:1.6">
-                {{ prediction }}
-              </p>
-            </div>
-
-            {% if assistant_hint %}
-            <div class="hint-card" style="margin-top:14px">
-              <strong><i class="fa-solid fa-robot" style="margin-right:6px"></i>AI Insight:</strong>
-              {{ assistant_hint }}
-            </div>
-            {% endif %}
-
-            <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
-              <a href="{{ url_for('assistant') }}?url={{ url }}" class="btn btn-cyan">
-                <i class="fa-solid fa-robot"></i> Full AI Analysis
-              </a>
-              <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
-                <i class="fa-solid fa-chart-line"></i> View Dashboard
-              </a>
-            </div>
-          </div>
-        </div>
-      {% endif %}
-
-      <!-- How it works -->
-      {% if not (url is defined and prediction) %}
-      <div class="content-card fade-in">
-        <div class="card-head">
-          <h2><i class="fa-solid fa-circle-info" style="margin-right:8px;color:var(--text-muted)"></i>How It Works</h2>
-        </div>
-        <div class="card-body">
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px">
-            {% for step in [
-              ('fa-magnifying-glass','URL Analysis','Normalizes and extracts domain, path and parameter patterns from the input URL.','blue'),
-              ('fa-server','DNS & SSL','Performs DNS lookup and validates SSL certificate legitimacy and age.','cyan'),
-              ('fa-brain','ML Scoring','Machine learning model evaluates URL structure and feature patterns.','blue'),
-              ('fa-shield-halved','Final Verdict','Combines all signals to produce a risk score and clear verdict.','green')
-            ] %}
-            <div style="display:flex;gap:12px;align-items:flex-start">
-              <div class="stat-card-icon stat-card {{ step[3] }}" style="margin:0;flex-shrink:0;width:38px;height:38px">
-                <i class="fa-solid {{ step[0] }}"></i>
-              </div>
-              <div>
-                <div style="font-weight:600;font-size:0.9rem;margin-bottom:4px;color:var(--text-primary)">{{ step[1] }}</div>
-                <div style="font-size:0.8125rem;color:var(--text-secondary);line-height:1.5">{{ step[2] }}</div>
-              </div>
-            </div>
-            {% endfor %}
-          </div>
-        </div>
+      <div class="feature-card">
+        <div class="feature-icon blue"><i class="fa-solid fa-chart-line"></i></div>
+        <div class="feature-title">DASHBOARD ANALYTICS</div>
+        <p class="feature-desc">Track your scan history, threat trends, and risk metrics through an intuitive analytics dashboard with real-time data visualization.</p>
+        <a href="{{ url_for('dashboard') }}" class="feature-link">
+          <i class="fa-solid fa-arrow-right"></i> View Dashboard
+        </a>
       </div>
-      {% endif %}
 
-      <footer class="app-footer">
-        © 2026 PhishGuard AI · Team Apex · Powered by ML + Google Safe Browsing
-      </footer>
+      <div class="feature-card">
+        <div class="feature-icon red"><i class="fa-solid fa-satellite-dish"></i></div>
+        <div class="feature-title">LIVE THREAT FEED</div>
+        <p class="feature-desc">Continuously updated threat intelligence from global security feeds. Community-powered phishing reports with automated cross-referencing.</p>
+        <a href="{{ url_for('assistant') }}" class="feature-link">
+          <i class="fa-solid fa-arrow-right"></i> View Intel
+        </a>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon cyan"><i class="fa-solid fa-shield-halved"></i></div>
+        <div class="feature-title">SECURITY SUITE</div>
+        <p class="feature-desc">Multi-vector analysis including SMS phishing detection, APK malware scanning, and URL checker — all in one unified security platform.</p>
+        <a href="{{ url_for('security_suite') }}" class="feature-link">
+          <i class="fa-solid fa-arrow-right"></i> Open Suite
+        </a>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon green"><i class="fa-solid fa-map-location-dot"></i></div>
+        <div class="feature-title">THREAT MAP</div>
+        <p class="feature-desc">2D interactive world threat map showing geo-distributed attack origins, threat categories, and live incident markers across 150+ countries.</p>
+        <a href="{{ url_for('threat_map') }}" class="feature-link">
+          <i class="fa-solid fa-arrow-right"></i> Open Map
+        </a>
+      </div>
 
     </div>
   </div>
-</div>
 
-<script>
-// Sidebar toggle
-const sidebar = document.getElementById('sidebar');
-const overlay = document.getElementById('sidebarOverlay');
-const toggle  = document.getElementById('sidebarToggle');
-if (toggle) {
-  toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('active'); });
-  overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
-}
+  <div class="section-divider"></div>
 
-// Scan form — loading state + steps animation
-const scanForm = document.getElementById('scanForm');
-if (scanForm) {
-  const steps = [
-    'Initializing security checks…',
-    'Performing DNS lookup…',
-    'Validating SSL certificate…',
-    'Running ML model analysis…',
-    'Checking Google Safe Browsing…',
-    'Calculating risk score…',
-  ];
+  <!-- ─── HOW IT WORKS ─── -->
+  <div class="section">
+    <p class="section-label">// intelligence pipeline</p>
+    <h2 class="section-title">HOW NEXUS WORKS</h2>
+    <p class="section-sub">Every URL passes through our five-layer security pipeline in under two seconds.</p>
 
-  scanForm.addEventListener('submit', function() {
-    const btn  = document.getElementById('scanBtn');
-    const wrap = document.getElementById('scanWrap');
-    const loader = document.getElementById('scanLoader');
-    const stepEl = document.getElementById('loaderStep');
-    const btnText = document.getElementById('scanBtnText');
+    <div class="how-grid">
+      <div class="how-step">
+        <div class="how-step-num">01</div>
+        <div class="how-step-title">INPUT &amp; NORMALIZE</div>
+        <p class="how-step-desc">URL is parsed, normalized, and domain components extracted for analysis. Protocol, path, and parameter patterns are flagged immediately.</p>
+      </div>
+      <div class="how-step">
+        <div class="how-step-num">02</div>
+        <div class="how-step-title">MULTI-ENGINE ANALYSIS</div>
+        <p class="how-step-desc">DNS resolution, SSL validation, domain age lookup, Google Safe Browsing query, and ML model inference all run in parallel against the target.</p>
+      </div>
+      <div class="how-step">
+        <div class="how-step-num">03</div>
+        <div class="how-step-title">THREAT VERDICT</div>
+        <p class="how-step-desc">Results are fused into a risk score. SAFE, SUSPICIOUS, or PHISHING verdict is delivered with a confidence score and detailed breakdown.</p>
+      </div>
+    </div>
+  </div>
 
-    if (!document.getElementById('urlInput').value.trim()) return;
+  <div class="section-divider"></div>
 
-    btn.classList.add('scanning');
-    wrap.classList.add('scanning');
-    btnText.textContent = 'Scanning…';
-    loader.classList.add('active');
+  <!-- ─── CTA ─── -->
+  <div class="cta-section">
+    <div class="cta-glow"></div>
+    <div class="cta-card">
+      <span class="cta-icon">⬡</span>
+      <h2 class="cta-title">ACTIVATE NEXUS</h2>
+      <p class="cta-desc">
+        Join the intelligence network. Scan URLs, monitor threats in real-time,
+        and stay protected against the latest phishing campaigns.
+      </p>
+      <div class="cta-btns">
+        {% if current_user and current_user.is_authenticated %}
+          <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+            <i class="fa-solid fa-gauge-high"></i> Go to Dashboard
+          </a>
+          <a href="{{ url_for('security_suite') }}" class="btn btn-outline">
+            <i class="fa-solid fa-magnifying-glass"></i> Scan a URL Now
+          </a>
+        {% else %}
+          <a href="{{ url_for('register') }}" class="btn btn-primary">
+            <i class="fa-solid fa-user-plus"></i> Get Started — Free
+          </a>
+          <a href="{{ url_for('login') }}" class="btn btn-outline">
+            <i class="fa-solid fa-right-to-bracket"></i> Sign In
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
 
-    let i = 0;
-    const interval = setInterval(() => {
-      if (i < steps.length) { stepEl.textContent = steps[i++]; }
-      else { clearInterval(interval); }
-    }, 1200);
+  <!-- ─── FOOTER ─── -->
+  <footer>
+    <span class="footer-brand">NEXUS</span> — Cyber Threat Intelligence Platform
+    &nbsp;·&nbsp; © 2026 &nbsp;·&nbsp; Real-Time Phishing Detection
+    &nbsp;·&nbsp; Powered by ML + Google Safe Browsing
+  </footer>
+
+  <!-- ─── SCRIPTS ─── -->
+  <script>
+  /* ── Particle canvas ── */
+  (function () {
+    const canvas = document.getElementById('nexus-canvas');
+    const ctx    = canvas.getContext('2d');
+    let W, H, particles = [], connections = [];
+
+    function resize() {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const COLORS = ['rgba(0,255,231,', 'rgba(0,255,136,', 'rgba(45,114,212,'];
+
+    for (let i = 0; i < 80; i++) {
+      particles.push({
+        x:  Math.random() * window.innerWidth,
+        y:  Math.random() * window.innerHeight,
+        r:  Math.random() * 1.4 + 0.3,
+        vx: (Math.random() - 0.5) * 0.3,
+        vy: (Math.random() - 0.5) * 0.3,
+        color: COLORS[Math.floor(Math.random() * 3)],
+        alpha: Math.random() * 0.4 + 0.08,
+      });
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+
+      /* Connections */
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const p = particles[i], q = particles[j];
+          const dx = p.x - q.x, dy = p.y - q.y;
+          const d  = Math.sqrt(dx * dx + dy * dy);
+          if (d < 110) {
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(q.x, q.y);
+            ctx.strokeStyle = `rgba(0,255,231,${0.08 * (1 - d / 110)})`;
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+          }
+        }
+      }
+
+      /* Particles */
+      particles.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.color + p.alpha + ')';
+        ctx.fill();
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0 || p.x > W) p.vx *= -1;
+        if (p.y < 0 || p.y > H) p.vy *= -1;
+      });
+
+      requestAnimationFrame(draw);
+    }
+    draw();
+  })();
+
+  /* ── Counter animation ── */
+  document.querySelectorAll('.stat-value[data-target]').forEach(el => {
+    const target = parseFloat(el.dataset.target);
+    const isDecimal = target % 1 !== 0;
+    let start = null;
+    const duration = 2000;
+
+    function step(ts) {
+      if (!start) start = ts;
+      const progress = Math.min((ts - start) / duration, 1);
+      const eased    = 1 - Math.pow(1 - progress, 3);
+      const val      = eased * target;
+      el.textContent = isDecimal ? val.toFixed(1) : Math.floor(val).toString();
+      if (progress < 1) requestAnimationFrame(step);
+      else el.textContent = isDecimal ? target.toFixed(1) : target;
+    }
+
+    /* Trigger when visible */
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting) {
+        requestAnimationFrame(step);
+        observer.disconnect();
+      }
+    });
+    observer.observe(el);
   });
-}
 
-// Animate risk fill bar
-const riskFill = document.getElementById('riskFill');
-if (riskFill) {
-  const value = parseFloat(riskFill.dataset.risk) || 0;
-  riskFill.style.width = '0%';
-  requestAnimationFrame(() => {
-    setTimeout(() => {
-      riskFill.style.width = Math.max(0, Math.min(100, value)) + '%';
-    }, 300);
+  /* ── Scroll reveal for feature cards ── */
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.opacity = '1';
+        e.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.feature-card, .how-step').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(24px)';
+    el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    observer.observe(el);
   });
-}
-
-// Scroll to result on load
-const resultCard = document.getElementById('resultCard');
-if (resultCard) {
-  setTimeout(() => {
-    resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, 400);
-}
-</script>
-<script src="{{ url_for('static', filename='js/tilt.js') }}"></script>
+  </script>
 </body>
 </html>

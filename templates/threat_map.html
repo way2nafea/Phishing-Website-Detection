@@ -15,51 +15,43 @@
   <style>
     /* ═══════════════════════════════════════════════════════════
        HEIGHT CHAIN FIX — Threat Map page only.
-       These rules override global.css min-height values to create
-       a proper flex column that gives Leaflet a real pixel height.
-
-       The layout stack that must all have defined height:
+       Layout stack requiring defined height:
          html → body → .app-layout → .main-content
              → .threat-page-body → .map-shell → #map
-
-       Root cause of blank map:
-         1. global.css uses min-height:100vh on body/.app-layout/
-            .main-content — flex:1 children can't inherit a real
-            pixel height from min-height, only from height.
-         2. The old .threat-page-body used
-            height: calc(100vh - var(--topbar-h)) which didn't
-            subtract the ribbon height → total > 100vh → clipped.
-         3. .map-shell was missing min-height:0 so it refused to
-            shrink below its intrinsic size, collapsing the chain.
-         4. #map used height:100% which resolved to 0 or clipped.
        ═══════════════════════════════════════════════════════════ */
 
     /* 1. Root height anchors */
-    html {
-      height: 100%;
-    }
+    html { height: 100%; }
     body {
       height: 100%;
       min-height: unset;   /* override global min-height:100vh */
       overflow: hidden;    /* no page-level scroll on map page */
     }
 
-    /* 2. Flex row wrapper — must be 100% tall */
+    /* 2. Flex row wrapper */
     .app-layout {
       height: 100%;
-      min-height: unset;   /* override global min-height:100vh */
+      min-height: unset;
     }
 
-    /* 3. Right-hand column — now a flex column with real height */
+    /* 3. Right-hand column */
     .main-content {
       height: 100%;
-      min-height: unset;         /* override global min-height:100vh */
+      min-height: unset;
       display: flex;
       flex-direction: column;
-      overflow: hidden;          /* clip children, no outer scroll */
+      overflow: hidden;
     }
 
-    /* ─── STATUS RIBBON ──────────────────────────── */
+    /* ─── PARTICLES BG (restored) ─────────────────────────────── */
+    #tsparticles {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ─── STATUS RIBBON ───────────────────────────────────────── */
     .threat-ribbon {
       display: flex;
       align-items: center;
@@ -67,7 +59,7 @@
       padding: 10px 24px;
       background: rgba(11, 15, 25, 0.92);
       border-bottom: 1px solid var(--border-subtle);
-      flex-shrink: 0;            /* never shrink — keeps its natural height */
+      flex-shrink: 0;
       flex-wrap: wrap;
       backdrop-filter: blur(12px);
       z-index: 10;
@@ -126,41 +118,133 @@
       color: var(--text-muted);
     }
 
-    /* 4. Page body — KEY CHANGE:
-          Old: height: calc(100vh - var(--topbar-h))
-               → didn't account for ribbon, caused overflow
-          New: flex:1 + min-height:0
-               → fills exactly the space left after the ribbon */
+    /* ─── REFRESH BUTTON (in ribbon — restored) ───────────────── */
+    .ribbon-refresh-btn {
+      margin-left: 8px;
+      padding: 4px 10px;
+      font-size: 0.6875rem;
+      font-family: var(--font-mono);
+      background: rgba(45,114,212,0.1);
+      border: 1px solid var(--border-glow);
+      border-radius: 6px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .ribbon-refresh-btn:hover {
+      background: rgba(45,114,212,0.2);
+      color: var(--accent-cyan);
+      border-color: var(--accent-cyan);
+    }
+    .ribbon-refresh-btn.spinning i { animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── TOOLBAR ROW (NEW — below ribbon) ───────────────────── */
+    .map-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 20px;
+      background: rgba(11,15,25,0.86);
+      border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+      flex-wrap: wrap;
+      backdrop-filter: blur(8px);
+      z-index: 9;
+    }
+    .map-toolbar-left  { display: flex; align-items: center; gap: 8px; flex: 1; flex-wrap: wrap; }
+    .map-toolbar-right { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    /* View toggle 2D / 3D */
+    .view-toggle-group {
+      display: flex;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+    }
+    .view-toggle-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 13px;
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: var(--transition);
+      white-space: nowrap;
+      text-decoration: none;
+    }
+    .view-toggle-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.05); }
+    .view-toggle-btn.active { background: var(--accent-blue); color: #fff; }
+    .view-toggle-btn + .view-toggle-btn { border-left: 1px solid var(--border-subtle); }
+
+    /* Generic toolbar button */
+    .tb-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 13px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+    .tb-btn:hover {
+      background: rgba(45,114,212,0.1);
+      color: var(--text-primary);
+      border-color: rgba(45,114,212,0.3);
+    }
+    /* Heatmap active state */
+    .tb-btn.heat-active {
+      background: rgba(255,176,32,0.12);
+      border-color: rgba(255,176,32,0.35);
+      color: var(--warning);
+    }
+    /* Auto-refresh active state */
+    .tb-btn.refresh-active {
+      background: rgba(0,229,160,0.1);
+      border-color: rgba(0,229,160,0.3);
+      color: var(--success);
+    }
+    .tb-btn.refresh-active i { animation: pulse 2s ease-in-out infinite; }
+
+    /* ─── PAGE BODY & MAP ─────────────────────────────────────── */
     .threat-page-body {
-      flex: 1;             /* consume all remaining vertical space */
-      min-height: 0;       /* CRITICAL — without this, flex refuses to
-                              shrink the child below its content size,
-                              breaking the height chain entirely        */
+      flex: 1;
+      min-height: 0;
       padding: 0;
       display: flex;
       flex-direction: column;
       overflow: hidden;
     }
-
-    /* 5. Map shell — same flex:1 + min-height:0 guard */
     .map-shell {
       flex: 1;
-      min-height: 0;       /* CRITICAL — same reason as above */
+      min-height: 0;
       position: relative;
       overflow: hidden;
     }
-
-    /* 6. Leaflet container — absolute fill of .map-shell.
-          Now that all ancestors have real pixel heights, Leaflet
-          reads the correct dimensions on init and invalidateSize(). */
     #map {
       position: absolute;
-      inset: 0;            /* shorthand for top:0 right:0 bottom:0 left:0 */
+      inset: 0;
       background: #080d18;
       z-index: 1;
     }
 
-    /* ─── MAP OVERLAY PANELS ─────────────────────── */
+    /* ─── MAP OVERLAY PANELS ──────────────────────────────────── */
     .map-panel {
       position: absolute;
       z-index: 500;
@@ -172,7 +256,36 @@
       box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,255,198,0.04);
     }
 
-    /* Live intel sidebar */
+    /* Threat count panel (top-left) */
+    .threat-counter-panel {
+      top: 16px;
+      left: 16px;
+      padding: 16px 20px;
+      min-width: 160px;
+    }
+    .counter-label {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-family: var(--font-mono);
+      margin-bottom: 6px;
+    }
+    .counter-value {
+      font-family: var(--font-display);
+      font-size: 2.25rem;
+      font-weight: 800;
+      color: var(--accent-cyan);
+      line-height: 1;
+      text-shadow: 0 0 20px rgba(0,255,198,0.4);
+    }
+    .counter-sub {
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* Intel feed panel (top-right) */
     .intel-panel {
       top: 16px;
       right: 16px;
@@ -208,11 +321,17 @@
     .intel-panel-body::-webkit-scrollbar-track { background: transparent; }
     .intel-panel-body::-webkit-scrollbar-thumb { background: var(--border-glow); border-radius: 2px; }
 
+    /* Intel feed items */
     .intel-item {
       padding: 10px 14px;
       border-bottom: 1px solid rgba(45,114,212,0.06);
       transition: background 0.15s;
-      cursor: default;
+      cursor: pointer;
+      animation: fadeInItem 0.3s ease both;
+    }
+    @keyframes fadeInItem {
+      from { opacity: 0; transform: translateX(8px); }
+      to   { opacity: 1; transform: none; }
     }
     .intel-item:hover { background: rgba(45,114,212,0.06); }
     .intel-item:last-child { border-bottom: none; }
@@ -239,16 +358,25 @@
     .intel-sev.HIGH   { background: rgba(255,69,96,0.15);  color: var(--danger);  border: 1px solid rgba(255,69,96,0.3); }
     .intel-sev.MEDIUM { background: rgba(255,176,32,0.15); color: var(--warning); border: 1px solid rgba(255,176,32,0.3); }
     .intel-sev.LOW    { background: rgba(0,229,160,0.15);  color: var(--success); border: 1px solid rgba(0,229,160,0.3); }
-    .intel-type {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-    }
+    .intel-type { font-size: 0.75rem; color: var(--text-secondary); }
     .intel-time {
       font-family: var(--font-mono);
       font-size: 0.6875rem;
       color: var(--text-muted);
       margin-top: 3px;
     }
+
+    /* NEW — blink animation on new high-severity entries */
+    @keyframes newEntryGlow {
+      0%   { background: rgba(255,69,96,0.12); box-shadow: inset 0 0 0 1px rgba(255,69,96,0.4); }
+      60%  { background: rgba(255,69,96,0.06); }
+      100% { background: transparent; }
+    }
+    .intel-item--new {
+      animation: fadeInItem 0.3s ease both, newEntryGlow 2.2s ease 0.3s;
+    }
+
+    /* Skeleton loading placeholders */
     .intel-skeleton {
       height: 60px;
       background: linear-gradient(90deg, rgba(45,114,212,0.06) 25%, rgba(45,114,212,0.12) 50%, rgba(45,114,212,0.06) 75%);
@@ -262,36 +390,7 @@
       100% { background-position: -200% 0; }
     }
 
-    /* Threat count badge (top-left panel) */
-    .threat-counter-panel {
-      top: 16px;
-      left: 16px;
-      padding: 16px 20px;
-      min-width: 160px;
-    }
-    .counter-label {
-      font-size: 0.6875rem;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      font-family: var(--font-mono);
-      margin-bottom: 6px;
-    }
-    .counter-value {
-      font-family: var(--font-display);
-      font-size: 2.25rem;
-      font-weight: 800;
-      color: var(--accent-cyan);
-      line-height: 1;
-      text-shadow: 0 0 20px rgba(0,255,198,0.4);
-    }
-    .counter-sub {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      margin-top: 4px;
-    }
-
-    /* ─── CUSTOM LEAFLET MARKERS ──────────────── */
+    /* ─── CUSTOM LEAFLET MARKERS ──────────────────────────────── */
     .pulse-marker {
       position: relative;
       display: flex;
@@ -319,13 +418,12 @@
     .pulse-marker.medium .ring { border: 2px solid var(--warning); }
     .pulse-marker.low    .dot { background: var(--success); box-shadow: 0 0 8px var(--success); }
     .pulse-marker.low    .ring { border: 2px solid var(--success); }
-
     @keyframes markerPulse {
       0%   { transform: scale(1);   opacity: 0.9; }
       100% { transform: scale(3.5); opacity: 0; }
     }
 
-    /* ─── LEAFLET POPUP OVERRIDE ──────────────── */
+    /* ─── LEAFLET POPUP OVERRIDE ──────────────────────────────── */
     .leaflet-popup-content-wrapper {
       background: rgba(11, 15, 25, 0.95) !important;
       border: 1px solid rgba(45, 114, 212, 0.3) !important;
@@ -335,10 +433,7 @@
       color: var(--text-primary) !important;
       padding: 0 !important;
     }
-    .leaflet-popup-content {
-      margin: 0 !important;
-      width: auto !important;
-    }
+    .leaflet-popup-content { margin: 0 !important; width: auto !important; }
     .leaflet-popup-tip-container { display: none !important; }
     .leaflet-popup-close-button {
       color: var(--text-muted) !important;
@@ -349,6 +444,7 @@
     .leaflet-popup-close-button:hover { color: var(--accent-cyan) !important; }
     .leaflet-container { background: #080d18; }
 
+    /* Popup card */
     .threat-popup { padding: 16px 18px; min-width: 210px; }
     .popup-header {
       display: flex;
@@ -375,6 +471,19 @@
     }
     .popup-key { color: var(--text-muted); font-family: var(--font-mono); font-size: 0.6875rem; }
     .popup-val { color: var(--text-primary); font-weight: 500; }
+    /* NEW — risk score bar inside popup */
+    .popup-risk-bar-wrap { margin: 6px 0 2px; }
+    .popup-risk-bar-track {
+      height: 5px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .popup-risk-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.8s ease;
+    }
     .popup-time {
       margin-top: 10px;
       padding-top: 8px;
@@ -384,7 +493,7 @@
       color: var(--text-muted);
     }
 
-    /* ─── ZOOM CONTROLS OVERRIDE ──────────────── */
+    /* ─── ZOOM CONTROLS OVERRIDE ──────────────────────────────── */
     .leaflet-control-zoom {
       border: 1px solid var(--border-subtle) !important;
       border-radius: var(--radius-sm) !important;
@@ -400,7 +509,7 @@
       color: var(--accent-cyan) !important;
     }
 
-    /* ─── BACK TO DASHBOARD LINK ─────────────── */
+    /* ─── BACK TO DASHBOARD ───────────────────────────────────── */
     .map-dashboard-link {
       position: absolute;
       bottom: 16px;
@@ -408,7 +517,7 @@
       z-index: 500;
     }
 
-    /* ─── LOADING OVERLAY ─────────────────────── */
+    /* ─── LOADING OVERLAY ─────────────────────────────────────── */
     #map-loading {
       position: absolute;
       inset: 0;
@@ -447,44 +556,13 @@
       margin-top: 8px;
     }
 
-    /* ─── REFRESH BTN IN RIBBON ───────────────── */
-    .ribbon-refresh-btn {
-      margin-left: 8px;
-      padding: 4px 10px;
-      font-size: 0.6875rem;
-      font-family: var(--font-mono);
-      background: rgba(45,114,212,0.1);
-      border: 1px solid var(--border-glow);
-      border-radius: 6px;
-      color: var(--text-secondary);
-      cursor: pointer;
-      transition: var(--transition);
-      display: flex;
-      align-items: center;
-      gap: 5px;
-    }
-    .ribbon-refresh-btn:hover {
-      background: rgba(45,114,212,0.2);
-      color: var(--accent-cyan);
-      border-color: var(--accent-cyan);
-    }
-    .ribbon-refresh-btn.spinning i { animation: spin 0.8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    /* ─── PARTICLES BG ────────────────────────── */
-    #tsparticles {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-      pointer-events: none;
-    }
-
-    /* ─── RESPONSIVE ──────────────────────────── */
+    /* ─── RESPONSIVE ──────────────────────────────────────────── */
     @media (max-width: 768px) {
       .intel-panel { display: none; }
       .threat-counter-panel { top: 8px; left: 8px; padding: 10px 14px; }
       .counter-value { font-size: 1.75rem; }
       .threat-ribbon { padding: 8px 16px; gap: 6px; }
+      .map-toolbar-right { display: none; }
     }
     @media (max-width: 480px) {
       .ribbon-separator,
@@ -493,11 +571,13 @@
   </style>
 </head>
 <body>
+
+<!-- Animated particle background (restored from original) -->
 <div id="tsparticles"></div>
 
 <div class="app-layout">
 
-  <!-- Sidebar (position:fixed — out of flow) -->
+  <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <a href="{{ url_for('index') }}" class="sidebar-brand">
       <div class="sidebar-brand-icon">🛡️</div>
@@ -506,7 +586,6 @@
         <span>Detection System</span>
       </div>
     </a>
-
     <nav class="sidebar-nav">
       <span class="nav-section-label">Main</span>
 
@@ -514,26 +593,30 @@
         <span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
         URL Scanner
       </a>
-
       <a href="{{ url_for('dashboard') }}" class="sidebar-link">
         <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>
         Dashboard
       </a>
-
       <a href="{{ url_for('assistant') }}" class="sidebar-link">
         <span class="nav-icon"><i class="fa-solid fa-robot"></i></span>
         AI Assistant
       </a>
-
       <a href="{{ url_for('security_suite') }}" class="sidebar-link">
         <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>
         Security Suite
       </a>
 
+      <span class="nav-section-label">Threat Intel</span>
+
       <a href="{{ url_for('threat_map') }}" class="sidebar-link active">
-        <span class="nav-icon"><i class="fa-solid fa-globe"></i></span>
-        Threat Map
+        <span class="nav-icon"><i class="fa-solid fa-map"></i></span>
+        2D Threat Map
         <span class="nav-badge">LIVE</span>
+      </a>
+      <a href="{{ url_for('globe') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-globe"></i></span>
+        3D Globe
+        <span class="nav-badge" style="background:rgba(0,255,198,0.12);color:var(--accent-cyan);border-color:rgba(0,255,198,0.25)">NEW</span>
       </a>
 
       <span class="nav-section-label">Account</span>
@@ -543,7 +626,6 @@
         Logout
       </a>
     </nav>
-
     <div class="sidebar-footer">
       <div class="status-badge">
         <div class="status-dot"></div>
@@ -557,7 +639,7 @@
   <!-- Main content column -->
   <div class="main-content">
 
-    <!-- Topbar (position:fixed — out of flow, padding-top on .main-content offsets below it) -->
+    <!-- Topbar -->
     <header class="topbar">
       <div class="topbar-left">
         <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
@@ -583,7 +665,7 @@
       </div>
     </header>
 
-    <!-- Threat Ribbon — flex-shrink:0, takes its natural height in the column -->
+    <!-- Threat Ribbon — severity counters + refresh button -->
     <div class="threat-ribbon">
       <div class="threat-ribbon-title">
         <span class="live-dot"></span>
@@ -607,7 +689,7 @@
 
       <div class="ribbon-stat">
         <i class="fa-solid fa-arrows-rotate"></i>
-        Auto-refresh 12s
+        Auto-refresh 10s
       </div>
 
       <button class="ribbon-refresh-btn" id="refresh-btn" onclick="manualRefresh()">
@@ -618,7 +700,44 @@
       <span id="last-updated-ribbon">Last updated: —</span>
     </div>
 
-    <!-- Page body: flex:1 → fills all remaining height after the ribbon -->
+    <!-- ── NEW: Toolbar row ─────────────────────────────────────── -->
+    <div class="map-toolbar">
+      <div class="map-toolbar-left">
+
+        <!-- 2D / 3D view switcher (NEW) -->
+        <div class="view-toggle-group">
+          <a href="{{ url_for('threat_map') }}" class="view-toggle-btn active">
+            <i class="fa-solid fa-map"></i> 2D Map
+          </a>
+          <a href="{{ url_for('globe') }}" class="view-toggle-btn">
+            <i class="fa-solid fa-globe"></i> 3D Globe
+          </a>
+        </div>
+
+        <!-- Heatmap toggle (NEW) -->
+        <button class="tb-btn" id="heatmap-toggle" onclick="toggleHeatmap()"
+          title="Toggle attack intensity heatmap overlay">
+          <i class="fa-solid fa-fire"></i>
+          <span>Heatmap</span>
+        </button>
+
+        <!-- Auto-refresh toggle (NEW) -->
+        <button class="tb-btn refresh-active" id="auto-refresh-toggle"
+          onclick="toggleAutoRefresh()" title="Toggle live auto-refresh every 10s">
+          <i class="fa-solid fa-circle-play"></i>
+          <span>Live: ON</span>
+        </button>
+
+      </div>
+      <div class="map-toolbar-right">
+        <span style="font-size:0.7rem;color:var(--text-muted);font-family:var(--font-mono);white-space:nowrap">
+          <i class="fa-solid fa-bolt" style="color:var(--accent-cyan);margin-right:3px;font-size:0.6rem"></i>
+          Updates every 10s
+        </span>
+      </div>
+    </div>
+
+    <!-- Page body: flex:1 → fills remaining height after ribbon + toolbar -->
     <div class="page-body threat-page-body">
 
       <!-- Map shell: flex:1 + min-height:0 → gives #map real pixel height -->
@@ -673,9 +792,15 @@
   </div><!-- /.main-content -->
 </div><!-- /.app-layout -->
 
-<!-- ─── SCRIPTS ────────────────────────────────── -->
+<!-- ─── SCRIPTS ──────────────────────────────────────────────────── -->
+
+<!-- Leaflet core -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" crossorigin="anonymous"></script>
+<!-- Leaflet.heat — heatmap layer (NEW) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js" crossorigin="anonymous"></script>
+<!-- tsParticles — animated background (restored from original) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/tsparticles/2.12.0/tsparticles.bundle.min.js" crossorigin="anonymous"></script>
+<!-- Vanilla Tilt (restored from original) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.1/vanilla-tilt.min.js" crossorigin="anonymous"></script>
 
 <!-- Sidebar toggle -->
@@ -695,7 +820,7 @@
   }
 </script>
 
-<!-- tsParticles -->
+<!-- tsParticles — restored from original, untouched config -->
 <script>
   tsParticles.load("tsparticles", {
     fpsLimit: 40,
@@ -716,9 +841,8 @@
   });
 </script>
 
-<!-- Threat map logic -->
+<!-- Threat map logic (heatmap + auto-refresh + toasts + fake data) -->
 <script src="{{ url_for('static', filename='js/threat_map.js') }}"></script>
-
 <script src="{{ url_for('static', filename='js/tilt.js') }}"></script>
 </body>
 </html>
