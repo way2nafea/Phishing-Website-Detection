@@ -626,7 +626,7 @@ def index():
 def url_scanner():
     """
     URL Scanner page — handles both GET (show form) and POST (scan & show result).
-    Renders scanner.html (the former index.html URL scanner template).
+    Renders url_scanner.html.
     """
     if request.method == "POST":
         raw_url = request.form.get("url", "").strip()
@@ -643,7 +643,7 @@ def url_scanner():
             db.session.commit()
 
             return render_template(
-                "scanner.html",
+                "url_scanner.html",
                 url=result["url"],
                 prediction=result["prediction"],
                 xx=result["xx"],
@@ -651,15 +651,22 @@ def url_scanner():
                 assistant_hint=None,
             )
 
-    return render_template("scanner.html")
+    return render_template("url_scanner.html")
 
 
 # =============================
 # SMART ASSISTANT ROUTE
 # =============================
-@app.route("/assistant", methods=["GET", "POST"])
+@app.route("/assistant")
 @login_required
 def assistant():
+    """Backward-compat alias — redirect to the renamed /ai-assistant route."""
+    return redirect(url_for("ai_assistant"))
+
+
+@app.route("/ai-assistant", methods=["GET", "POST"])
+@login_required
+def ai_assistant():
     suggestion = None
     popular_suggestions = [
         "https://www.google.com",
@@ -689,7 +696,7 @@ def assistant():
     )
 
     return render_template(
-        "assistant.html",
+        "ai_assistant.html",
         suggestion=suggestion,
         popular_suggestions=popular_suggestions,
         top_phishing=top_phishing,
@@ -711,12 +718,12 @@ def assistant_report():
 
     if not report_url:
         flash("Please provide a URL to report.", "danger")
-        return redirect(url_for("assistant"))
+        return redirect(url_for("ai_assistant"))
 
     existing = PhishReport.query.filter_by(url=report_url, user_id=current_user.id).first()
     if existing:
         flash("You have already reported this URL. It is under review.", "info")
-        return redirect(url_for("assistant"))
+        return redirect(url_for("ai_assistant"))
 
     report = PhishReport(
         url=report_url,
@@ -729,7 +736,7 @@ def assistant_report():
     db.session.commit()
 
     flash("Thanks! URL submitted for community review.", "success")
-    return redirect(url_for("assistant"))
+    return redirect(url_for("ai_assistant"))
 
 
 # =========================
@@ -803,7 +810,7 @@ def update_report_status(report_id):
 @app.route("/security-suite")
 @login_required
 def security_suite():
-    return render_template("security-suite.html")
+    return render_template("security_suite.html")
 
 
 @app.route("/sms-check", methods=["POST"])
@@ -811,7 +818,7 @@ def security_suite():
 def sms_checker():
     message = request.form.get("message", "")
     sms_result = analyze_message_text(message)
-    return render_template("security-suite.html", sms_result=sms_result)
+    return render_template("security_suite.html", sms_result=sms_result)
 
 
 @app.route("/url-check", methods=["POST"])
@@ -830,7 +837,7 @@ def url_checker():
     db.session.add(new_scan)
     db.session.commit()
 
-    return render_template("security-suite.html", url_result=url_result)
+    return render_template("security_suite.html", url_result=url_result)
 
 
 @app.route("/apk-check", methods=["POST"])
@@ -839,7 +846,7 @@ def apk_checker():
     apk_url = request.form.get("apk_url", "")
     apk_file = request.files.get("apk_file")
     apk_result = analyze_apk(apk_url=apk_url, apk_file=apk_file)
-    return render_template("security-suite.html", apk_result=apk_result)
+    return render_template("security_suite.html", apk_result=apk_result)
 
 
 # =============================

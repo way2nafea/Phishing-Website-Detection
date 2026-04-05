@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Threat Globe — PhishGuard AI</title>
+  <title>3D Threat Globe — NEXUS</title>
   <!-- Core styles -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous">
@@ -819,54 +819,51 @@
 <div class="app-layout">
 
   <!-- Sidebar -->
-  <aside class="sidebar" id="sidebar">
-    <a href="{{ url_for('index') }}" class="sidebar-brand">
-      <div class="sidebar-brand-icon">🛡️</div>
-      <div class="sidebar-brand-name">
-        PhishGuard AI
-        <span>Detection System</span>
-      </div>
-    </a>
-    <nav class="sidebar-nav">
-      <span class="nav-section-label">Main</span>
-      <a href="{{ url_for('index') }}" class="sidebar-link">
-        <span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span>
-        URL Scanner
+      <aside class="sidebar" id="sidebar">
+      <a href="{{ url_for('index') }}" class="sidebar-brand">
+        <div class="sidebar-brand-icon">⬡</div>
+        <div class="sidebar-brand-name">
+          NEXUS
+          <span>Threat Intelligence</span>
+        </div>
       </a>
+
+      <nav class="sidebar-nav">
+        <span class="nav-section-label">Main</span>
       <a href="{{ url_for('dashboard') }}" class="sidebar-link">
-        <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>
-        Dashboard
+        <span class="nav-icon"><i class="fa-solid fa-chart-line"></i></span>Dashboard
       </a>
-      <a href="{{ url_for('assistant') }}" class="sidebar-link">
-        <span class="nav-icon"><i class="fa-solid fa-robot"></i></span>
-        AI Assistant
+      <a href="{{ url_for('url_scanner') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span>URL Scanner
       </a>
       <a href="{{ url_for('security_suite') }}" class="sidebar-link">
-        <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>
-        Security Suite
+        <span class="nav-icon"><i class="fa-solid fa-shield-halved"></i></span>Security Suite
       </a>
-      <span class="nav-section-label">Threat Intel</span>
+      <a href="{{ url_for('ai_assistant') }}" class="sidebar-link">
+        <span class="nav-icon"><i class="fa-solid fa-robot"></i></span>AI Assistant
+      </a>
+        <span class="nav-section-label">Threat Intel</span>
       <a href="{{ url_for('threat_map') }}" class="sidebar-link">
-        <span class="nav-icon"><i class="fa-solid fa-map"></i></span>
-        2D Threat Map
+        <span class="nav-icon"><i class="fa-solid fa-map"></i></span>2D Threat Map
+        <span class="nav-badge">LIVE</span>
       </a>
       <a href="{{ url_for('globe') }}" class="sidebar-link active">
-        <span class="nav-icon"><i class="fa-solid fa-globe"></i></span>
-        3D Globe
+        <span class="nav-icon"><i class="fa-solid fa-globe"></i></span>3D Globe
+        <span class="nav-badge" style="background:rgba(0,255,198,0.12);color:var(--accent-cyan);border-color:rgba(0,255,198,0.25)">NEW</span>
       </a>
-      <span class="nav-section-label">Account</span>
+        <span class="nav-section-label">Account</span>
       <a href="{{ url_for('logout') }}" class="sidebar-link danger-link">
-        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>
-        Logout
+        <span class="nav-icon"><i class="fa-solid fa-right-from-bracket"></i></span>Logout
       </a>
-    </nav>
-    <div class="sidebar-footer">
-      <div class="status-badge">
-        <div class="status-dot"></div>
-        Globe Active
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-badge">
+          <div class="status-dot"></div>
+          Engine Online
+        </div>
       </div>
-    </div>
-  </aside>
+    </aside>
 
   <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -1089,5 +1086,7 @@ if (toggle) {
 }
 </script>
 <script src="{{ url_for('static', filename='js/analytics.js') }}"></script>
+<!-- NEXUS motion system -->
+<script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
 </body>
 </html>
