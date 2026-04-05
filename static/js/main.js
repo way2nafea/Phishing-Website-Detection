@@ -1,13 +1,6 @@
 /**
  * NEXUS — main.js
- * Lightweight motion system · Apple-grade · zero dependencies
- *
- * Modules:
- *  1. Hero fade       — one-time, CSS-driven, triggers on DOM ready
- *  2. Scroll reveal   — IntersectionObserver, runs once per element
- *  3. Subtle tilt     — pointer-tracking 3D tilt (4° max), GPU-only
- *  4. Sidebar toggle  — mobile sidebar open/close
- *  5. Form loader     — submit-state button feedback
+ * Premium animation engine powered by GSAP.
  */
 
 (function () {
@@ -16,100 +9,241 @@
   /* ──────────────────────────────────────────────────────────
      CONSTANTS
   ────────────────────────────────────────────────────────── */
-  const TILT_MAX    = 4;          // degrees, keeps it premium not toy
-  const TILT_SCALE  = 1.015;      // very slight Z-lift on hover
-  const EASE_RESET  = 'transform 0.55s cubic-bezier(0.22, 1, 0.36, 1)';
-  const EASE_TRACK  = 'transform 0.12s linear';
+  const TILT_MAX    = 4;          
+  const TILT_SCALE  = 1.015;      
 
   /* ──────────────────────────────────────────────────────────
-     1. HERO FADE
-     Adds .hero-ready to .page-header / .dashboard-header once.
-     CSS handles the actual animation — no JS animation frames.
+     1. PARALLAX BACKGROUND (REMOVED)
   ────────────────────────────────────────────────────────── */
-  function initHero() {
-    const hero = document.querySelector('.page-header, .dashboard-header');
-    if (!hero || hero.classList.contains('hero-ready')) return;
 
-    // Small rAF delay ensures the class triggers after paint
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        hero.classList.add('hero-ready');
-      });
-    });
-  }
 
   /* ──────────────────────────────────────────────────────────
-     2. SCROLL REVEAL
-     Targets elements with class="reveal".
-     Marks each as .revealed exactly once when ≥15% visible.
+     2. MAGNETIC BUTTONS (High Priority)
+     Buttons follow the cursor with smooth easing
   ────────────────────────────────────────────────────────── */
-  function initScrollReveal() {
-    const targets = document.querySelectorAll('.reveal');
-    if (!targets.length || !('IntersectionObserver' in window)) {
-      // Graceful fallback: just show everything
-      targets.forEach(el => el.classList.add('revealed'));
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries, obs) => {
-        entries.forEach(entry => {
-          if (!entry.isIntersecting) return;
-          entry.target.classList.add('revealed');
-          obs.unobserve(entry.target); // run once — no continuous re-trigger
-        });
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -32px 0px' }
-    );
-
-    targets.forEach(el => observer.observe(el));
-  }
-
-  /* ──────────────────────────────────────────────────────────
-     3. SUBTLE 3D TILT
-     Applied to [data-tilt] elements.
-     Pure CSS transform — no layout reflow, no opacity changes.
-     Resets smoothly on mouseleave.
-  ────────────────────────────────────────────────────────── */
-  function initTilt() {
-    const targets = document.querySelectorAll('[data-tilt]');
-    if (!targets.length) return;
-
-    // Skip on touch-only devices (no hover = tilt makes no sense)
+  function initMagneticButtons() {
     if (window.matchMedia('(hover: none)').matches) return;
 
-    targets.forEach(card => {
-      card.style.willChange    = 'transform';
-      card.style.transformStyle = 'preserve-3d';
+    const magnets = document.querySelectorAll('.magnetic-btn');
 
-      card.addEventListener('mouseenter', () => {
-        card.style.transition = EASE_TRACK;
+    magnets.forEach(btn => {
+      btn.addEventListener('mousemove', e => {
+        const rect = btn.getBoundingClientRect();
+        const h = rect.width / 2;
+        const v = rect.height / 2;
+        // Calculate distance from center
+        const x = e.clientX - rect.left - h;
+        const y = e.clientY - rect.top - v;
+
+        // Apply a fraction of the distance (magnetic pull)
+        const pullX = x * 0.3;
+        const pullY = y * 0.3;
+
+        // Use GSAP for buttery smooth follower
+        if (typeof gsap !== 'undefined') {
+          gsap.to(btn, {
+            '--tx': `${pullX}px`,
+            '--ty': `${pullY}px`,
+            duration: 0.3,
+            ease: 'power3.out'
+          });
+        } else {
+          // Fallback to CSS variables
+          btn.style.setProperty('--tx', `${pullX}px`);
+          btn.style.setProperty('--ty', `${pullY}px`);
+        }
       });
 
-      card.addEventListener('mousemove', e => {
-        const rect   = card.getBoundingClientRect();
-        const cx     = rect.left + rect.width  / 2;
-        const cy     = rect.top  + rect.height / 2;
-        const dx     = (e.clientX - cx) / (rect.width  / 2); // −1 … 1
-        const dy     = (e.clientY - cy) / (rect.height / 2); // −1 … 1
-
-        const rotX   = -dy * TILT_MAX;  // negative: tilt toward cursor
-        const rotY   =  dx * TILT_MAX;
-
-        card.style.transform =
-          `perspective(900px) rotateX(${rotX}deg) rotateY(${rotY}deg) scale3d(${TILT_SCALE},${TILT_SCALE},${TILT_SCALE})`;
-      });
-
-      card.addEventListener('mouseleave', () => {
-        card.style.transition = EASE_RESET;
-        card.style.transform  = 'perspective(900px) rotateX(0deg) rotateY(0deg) scale3d(1,1,1)';
+      btn.addEventListener('mouseleave', () => {
+        if (typeof gsap !== 'undefined') {
+          gsap.to(btn, {
+            '--tx': `0px`,
+            '--ty': `0px`,
+            duration: 0.7,
+            ease: 'elastic.out(1, 0.3)'
+          });
+        } else {
+          btn.style.setProperty('--tx', `0px`);
+          btn.style.setProperty('--ty', `0px`);
+        }
       });
     });
   }
 
   /* ──────────────────────────────────────────────────────────
-     4. SIDEBAR TOGGLE  (mobile)
-     Works with the sidebar layout used in security_suite.html etc.
+     3. RIPPLE CLICK EFFECT (High Priority)
+     Ripple expands from exact click coordinates
+  ────────────────────────────────────────────────────────── */
+  function initRipples() {
+    const rippleBtns = document.querySelectorAll('.ripple-btn');
+    
+    rippleBtns.forEach(btn => {
+      btn.addEventListener('mousedown', function(e) {
+        let x, y;
+        
+        // Handle touch vs mouse
+        if (e.clientX !== undefined) {
+          x = e.clientX - btn.getBoundingClientRect().left;
+          y = e.clientY - btn.getBoundingClientRect().top;
+        } else if (e.touches && e.touches[0]) {
+          x = e.touches[0].clientX - btn.getBoundingClientRect().left;
+          y = e.touches[0].clientY - btn.getBoundingClientRect().top;
+        } else {
+          return; // Ignore
+        }
+
+        const ripple = document.createElement('span');
+        ripple.classList.add('ripple');
+        
+        // Ensure ripple covers the whole button
+        const size = Math.max(btn.clientWidth, btn.clientHeight);
+        ripple.style.width = ripple.style.height = `${size}px`;
+        ripple.style.left = `${x - size / 2}px`;
+        ripple.style.top = `${y - size / 2}px`;
+        
+        btn.appendChild(ripple);
+        
+        // Clean up after 600ms (duration of animation)
+        setTimeout(() => {
+          ripple.remove();
+        }, 600);
+      });
+    });
+  }
+
+  /* ──────────────────────────────────────────────────────────
+     4. HERO GSAP ENTRANCE
+  ────────────────────────────────────────────────────────── */
+  function initHero() {
+    if (typeof gsap === 'undefined') return;
+
+    // Remove CSS animation to let JS take over
+    const heroElements = document.querySelectorAll('.hero-badge, .hero-eyebrow, .hero-title, .hero-subtitle, .hero-desc, .hero-btns, .hero-stats');
+    heroElements.forEach(el => el.style.animation = 'none');
+    
+    const globe = document.querySelector('.hero-visual');
+    if (globe) globe.style.animation = 'none';
+
+    const tl = gsap.timeline();
+
+    tl.fromTo('.hero-badge', 
+      { y: 20, opacity: 0 }, 
+      { y: 0, opacity: 1, duration: 0.8, ease: 'power3.out' }
+    )
+    .fromTo(['.hero-eyebrow', '.hero-title', '.hero-subtitle', '.hero-desc'],
+      { y: 30, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.8, stagger: 0.1, ease: 'power3.out' },
+      "-=0.6"
+    )
+    .fromTo('.hero-btns',
+      { y: 20, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.6, ease: 'power3.out' },
+      "-=0.4"
+    )
+    .fromTo('.hero-stat',
+      { y: 20, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.6, stagger: 0.1, ease: 'power3.out' },
+      "-=0.4"
+    );
+
+    if (globe) {
+      gsap.fromTo(globe, 
+        { scale: 0.9, opacity: 0, rotation: -5 }, 
+        { scale: 1, opacity: 1, rotation: 0, duration: 1.2, ease: 'power3.out' },
+        0.2 // start near beginning
+      );
+    }
+  }
+
+  /* ──────────────────────────────────────────────────────────
+     5. GSAP SCROLL REVEAL & STAGGER
+     Uses ScrollTrigger if available, otherwise fallback
+  ────────────────────────────────────────────────────────── */
+  function initScrollReveal() {
+    if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+      gsap.registerPlugin(ScrollTrigger);
+
+      // Section titles
+      gsap.utils.toArray('.section-eyebrow, .section-title, .section-sub').forEach(el => {
+        gsap.fromTo(el, 
+          { y: 30, autoAlpha: 0 },
+          { 
+            y: 0, autoAlpha: 1, duration: 0.8, ease: 'power3.out',
+            scrollTrigger: {
+              trigger: el,
+              start: "top 85%",
+            }
+          }
+        );
+      });
+
+      // Grids / Staggers
+      gsap.utils.toArray('.stagger, .steps-grid').forEach(container => {
+        const children = container.querySelectorAll('.reveal, .feat-card, .step-card, .step-connector');
+        
+        // Remove class reveal so fallback CSS doesn't fight GSAP
+        children.forEach(c => c.classList.remove('reveal'));
+        
+        gsap.fromTo(children, 
+          { y: 40, autoAlpha: 0, scale: 0.98 },
+          {
+            y: 0, autoAlpha: 1, scale: 1,
+            duration: 0.8, stagger: 0.1, ease: 'back.out(1.2)',
+            scrollTrigger: {
+              trigger: container,
+              start: "top 80%",
+            }
+          }
+        );
+      });
+      
+      // CTA Reveal
+      const cta = document.querySelector('.cta-card');
+      if (cta) {
+        cta.classList.remove('reveal');
+        gsap.fromTo(cta,
+          { y: 50, autoAlpha: 0, scale: 0.95 },
+          {
+            y: 0, autoAlpha: 1, scale: 1, duration: 0.8, ease: 'power3.out',
+            scrollTrigger: {
+              trigger: '.cta-wrap',
+              start: "top 75%",
+            }
+          }
+        );
+      }
+
+    } else {
+      // Graceful fallback to CSS IntersectionObserver
+      const targets = document.querySelectorAll('.reveal');
+      if (!targets.length || !('IntersectionObserver' in window)) {
+        targets.forEach(el => el.classList.add('revealed'));
+        return;
+      }
+      const observer = new IntersectionObserver(
+        (entries, obs) => {
+          entries.forEach(entry => {
+            if (!entry.isIntersecting) return;
+            entry.target.classList.add('revealed');
+            obs.unobserve(entry.target); 
+          });
+        },
+        { threshold: 0.12, rootMargin: '0px 0px -32px 0px' }
+      );
+      targets.forEach(el => observer.observe(el));
+    }
+  }
+
+  /* ──────────────────────────────────────────────────────────
+     5.5. RADAR (REMOVED)
+  ────────────────────────────────────────────────────────── */
+
+  /* ──────────────────────────────────────────────────────────
+     6. SUBTLE 3D TILT + GLARE (REMOVED)
+  ────────────────────────────────────────────────────────── */
+
+  /* ──────────────────────────────────────────────────────────
+     7. SIDEBAR TOGGLE & EXTRAS 
   ────────────────────────────────────────────────────────── */
   function initSidebar() {
     const sidebar  = document.getElementById('sidebar');
@@ -120,22 +254,11 @@
     function open()  { sidebar.classList.add('open');    overlay?.classList.add('active');    }
     function close() { sidebar.classList.remove('open'); overlay?.classList.remove('active'); }
 
-    toggle.addEventListener('click', () =>
-      sidebar.classList.contains('open') ? close() : open()
-    );
+    toggle.addEventListener('click', () => sidebar.classList.contains('open') ? close() : open());
     overlay?.addEventListener('click', close);
-
-    // Close on Escape
-    document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') close();
-    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
   }
 
-  /* ──────────────────────────────────────────────────────────
-     5. FORM LOADER
-     Any <form> with [data-loader] shows a loading state on submit.
-     Usage: <form data-loader="Scanning…">
-  ────────────────────────────────────────────────────────── */
   function initFormLoaders() {
     document.querySelectorAll('form[data-loader]').forEach(form => {
       form.addEventListener('submit', function () {
@@ -145,51 +268,29 @@
 
         btn.disabled = true;
         btn.style.pointerEvents = 'none';
-        btn.innerHTML =
-          `<span class="spin-ring" style="width:15px;height:15px;border-width:2.5px"></span> ${label}`;
+        btn.innerHTML = `<span class="spin-ring" style="width:15px;height:15px;border-width:2.5px"></span> ${label}`;
       });
     });
   }
 
-  /* ──────────────────────────────────────────────────────────
-     6. ACTIVE NAV HIGHLIGHT
-     Adds .active to the nav-link / sidebar-link whose href
-     matches the current pathname — useful for any layout.
-  ────────────────────────────────────────────────────────── */
   function initActiveNav() {
     const path  = window.location.pathname;
     const links = document.querySelectorAll('.nav-link, .sidebar-link');
-
     links.forEach(link => {
-      if (link.getAttribute('href') === path) {
-        link.classList.add('active');
-      }
+      if (link.getAttribute('href') === path) link.classList.add('active');
     });
   }
 
   /* ──────────────────────────────────────────────────────────
-     7. STAGGER INJECT
-     For groups of .reveal children, inject CSS-var delays
-     so sibling cards fan in beautifully without JS timers.
-  ────────────────────────────────────────────────────────── */
-  function initStagger() {
-    document.querySelectorAll('.stagger').forEach(container => {
-      const children = container.querySelectorAll('.reveal, .card, .stat-card, .tool-card');
-      children.forEach((child, i) => {
-        child.classList.add('reveal');               // ensure class
-        child.style.transitionDelay = `${i * 60}ms`; // 60ms between each
-      });
-    });
-  }
-
-  /* ──────────────────────────────────────────────────────────
-     INIT — runs after DOM is parsed
+     INIT
   ────────────────────────────────────────────────────────── */
   function init() {
+    initMagneticButtons();
+    initRipples();
+    initScrollReveal(); 
     initHero();
-    initStagger();          // must come before initScrollReveal
-    initScrollReveal();
-    initTilt();
+    
+    // Non-animation logic
     initSidebar();
     initFormLoaders();
     initActiveNav();
@@ -198,7 +299,7 @@
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
-    init(); // already parsed (e.g. deferred script)
+    init(); 
   }
 
 })();

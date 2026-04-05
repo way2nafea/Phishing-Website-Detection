@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -333,139 +333,6 @@
       display: flex; align-items: center; justify-content: center;
       animation: lp-fadeUp 0.8s cubic-bezier(0.22,1,0.36,1) 0.25s both;
     }
-
-    .globe-frame {
-      position: relative;
-      width: clamp(280px, 38vw, 480px);
-      aspect-ratio: 1;
-    }
-
-    /* Outer ring */
-    .globe-ring {
-      position: absolute; inset: 0;
-      border-radius: 50%;
-      border: 1px solid var(--border-lit);
-      animation: globe-spin 18s linear infinite;
-    }
-    .globe-ring::before, .globe-ring::after {
-      content: '';
-      position: absolute;
-      border-radius: 50%;
-      border: 1px dashed rgba(0,255,231,0.12);
-    }
-    .globe-ring::before { inset: 12%; }
-    .globe-ring::after  { inset: 24%; }
-    @keyframes globe-spin { to { transform: rotate(360deg); } }
-
-    /* Counter-spin inner ring */
-    .globe-inner-ring {
-      position: absolute; inset: 6%;
-      border-radius: 50%;
-      border: 1px solid rgba(0,255,231,0.09);
-      animation: globe-spin-rev 12s linear infinite;
-    }
-    @keyframes globe-spin-rev { to { transform: rotate(-360deg); } }
-
-    /* Globe body */
-    .globe-body {
-      position: absolute; inset: 15%;
-      border-radius: 50%;
-      background:
-        radial-gradient(circle at 35% 38%, rgba(0,255,231,0.14) 0%, transparent 55%),
-        radial-gradient(circle at 65% 62%, rgba(45,114,212,0.18) 0%, transparent 60%),
-        linear-gradient(135deg, #060d16 0%, #0b1830 60%, #060d16 100%);
-      border: 1px solid var(--border-lit);
-      box-shadow:
-        0 0 60px rgba(0,255,231,0.10),
-        0 0 120px rgba(45,114,212,0.10),
-        inset 0 0 40px rgba(0,255,231,0.05);
-      overflow: hidden;
-    }
-
-    /* Lat/lon grid lines on globe */
-    .globe-grid {
-      position: absolute; inset: 0;
-      background-image:
-        repeating-linear-gradient(0deg, transparent, transparent calc(25% - 0.5px), rgba(0,255,231,0.06) calc(25% - 0.5px), rgba(0,255,231,0.06) 25%),
-        repeating-linear-gradient(90deg, transparent, transparent calc(25% - 0.5px), rgba(0,255,231,0.06) calc(25% - 0.5px), rgba(0,255,231,0.06) 25%);
-    }
-
-    /* Pulsing threat dots */
-    .globe-dot {
-      position: absolute;
-      width: 7px; height: 7px;
-      border-radius: 50%;
-    }
-    .globe-dot::before {
-      content: ''; position: absolute; inset: -4px;
-      border-radius: 50%;
-      animation: dot-pulse 2s ease-in-out infinite;
-    }
-    .globe-dot.d-red  { background: #ff4560; }
-    .globe-dot.d-red::before { background: rgba(255,69,96,0.25); }
-    .globe-dot.d-cyan { background: var(--cyan); }
-    .globe-dot.d-cyan::before { background: rgba(0,255,231,0.20); }
-    .globe-dot.d-grn  { background: var(--green); }
-    .globe-dot.d-grn::before { background: rgba(0,255,136,0.20); }
-    @keyframes dot-pulse { 0%,100%{transform:scale(1);opacity:0.9} 50%{transform:scale(2.2);opacity:0} }
-
-    /* Attack arc line (SVG) */
-    .globe-arcs {
-      position: absolute; inset: 0;
-      overflow: visible;
-    }
-    .arc-path {
-      fill: none; stroke-width: 1;
-      stroke-dasharray: 200;
-      stroke-dashoffset: 200;
-    }
-    .arc-1 { stroke: rgba(0,255,231,0.35); animation: arc-draw 3.5s ease-in-out 0.5s infinite; }
-    .arc-2 { stroke: rgba(255,69,96,0.30); animation: arc-draw 3.5s ease-in-out 1.2s infinite; }
-    .arc-3 { stroke: rgba(0,255,136,0.30); animation: arc-draw 3.5s ease-in-out 2.1s infinite; }
-    @keyframes arc-draw { 0%{stroke-dashoffset:200;opacity:0} 20%{opacity:1} 70%{stroke-dashoffset:0;opacity:0.7} 100%{stroke-dashoffset:0;opacity:0} }
-
-    /* Central glow pulse */
-    .globe-pulse {
-      position: absolute; inset: 38%;
-      border-radius: 50%;
-      background: rgba(0,255,231,0.18);
-      animation: globe-pulse 2.8s ease-in-out infinite;
-      filter: blur(4px);
-    }
-    @keyframes globe-pulse { 0%,100%{opacity:0.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.3)} }
-
-    /* Orbit dot */
-    .orbit-dot {
-      position: absolute; top: 0; left: 50%;
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      transform: translate(-50%, -50%);
-    }
-    .orbit-wrapper {
-      position: absolute; inset: 4%;
-      border-radius: 50%;
-      animation: globe-spin 7s linear infinite;
-    }
-    .orbit-dot-1 { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
-    .orbit-wrapper-2 {
-      position: absolute; inset: 4%;
-      border-radius: 50%;
-      animation: globe-spin-rev 9s linear infinite;
-    }
-    .orbit-dot-2 { background: #ff4560; box-shadow: 0 0 10px #ff4560; }
-
-    /* Corner tags */
-    .globe-tag {
-      position: absolute;
-      font-family: var(--fm); font-size: 0.6rem;
-      letter-spacing: 0.08em; color: var(--tm);
-      display: flex; align-items: center; gap: 5px;
-    }
-    .globe-tag-dot { width: 5px; height: 5px; border-radius: 50%; }
-    .gt-tl { top: 0;  left:  0;  }
-    .gt-tr { top: 0;  right: 0;  flex-direction: row-reverse; }
-    .gt-bl { bottom: 0; left: 0; }
-    .gt-br { bottom: 0; right: 0; flex-direction: row-reverse; }
 
     /* ══════════════════════════════════════════════════════════
        SECTION LAYOUT HELPERS
@@ -805,6 +672,124 @@
       .feat-card { padding: 24px 20px; }
       .features-grid { grid-template-columns: 1fr; }
     }
+
+    /* ══════════════════════════════════════════════════════════
+       PREMIUM ANIMATION OVERRIDES
+    ══════════════════════════════════════════════════════════ */
+    .magnetic-btn {
+      will-change: transform;
+      transform: translate(var(--tx, 0px), var(--ty, 0px));
+      /* The transform transition is handled by GSAP, but fallback is fine */
+      /* Note: We remove transform from transition here so GSAP ticker doesn't fight CSS */
+      transition: box-shadow 0.3s cubic-bezier(0.22,1,0.36,1), background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+    
+    .ripple-btn {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      transform: scale(0);
+      background: rgba(255, 255, 255, 0.35);
+      animation: rippleEffect 0.6s cubic-bezier(0.22,1,0.36,1);
+      pointer-events: none;
+      z-index: 0;
+    }
+    @keyframes rippleEffect {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    /* Elevate button content above ripple */
+    .ripple-btn > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Premium Button Hover & Press states */
+    .btn-hero-primary, .btn-hero-outline, .btn-nav {
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-hero-primary::before, .btn-hero-outline::before {
+      content: "";
+      position: absolute;
+      top: 0; left: -100%; right: 0; bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+      z-index: 1;
+      transition: left 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+      pointer-events: none;
+    }
+    .btn-hero-primary:hover::before, .btn-hero-outline:hover::before {
+      left: 100%;
+    }
+    
+    .btn-hero-primary:active, .btn-hero-outline:active, .btn-nav:active {
+      transform: scale(0.97) translate(0px, 0px) !important;
+      transition: transform 0.1s;
+    }
+
+    /* Ensure specific magnetic scale classes combine */
+    .btn-hero-primary.magnetic-btn:hover {
+      box-shadow: 0 0 50px var(--cyan-glow), 0 12px 32px rgba(0,0,0,0.6);
+    }
+    .btn-hero-outline.magnetic-btn:hover {
+      box-shadow: 0 0 30px rgba(0, 255, 231, 0.2), 0 12px 32px rgba(0,0,0,0.6);
+      background: var(--cyan-dim);
+    }
+
+    /* Card inner reflection (glare) */
+    .feat-card, .step-card, .cta-card {
+      position: relative;
+    }
+    .feat-card::after, .step-card::after, .cta-card::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: inherit;
+      background: radial-gradient(
+        800px circle at var(--glare-x, 50%) var(--glare-y, 50%),
+        rgba(255, 255, 255, 0.06),
+        transparent 40%
+      );
+      opacity: var(--glare-opacity, 0);
+      transition: opacity 0.4s ease;
+      z-index: 2;
+    }
+    .feat-card:hover::after, .step-card:hover::after, .cta-card:hover::after {
+      --glare-opacity: 1;
+    }
+
+    /* Smooth nav hover underline */
+    .nav-center a {
+      position: relative;
+      background: transparent !important; /* overrides previous hover bg */
+    }
+    .nav-center a::after {
+      content: '';
+      position: absolute;
+      bottom: 2px;
+      left: 50%;
+      width: 0;
+      height: 1.5px;
+      background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+      transition: width 0.3s cubic-bezier(0.22,1,0.36,1), left 0.3s cubic-bezier(0.22,1,0.36,1);
+      border-radius: 2px;
+      opacity: 0;
+    }
+    .nav-center a:hover::after {
+      width: 70%;
+      left: 15%;
+      opacity: 1;
+    }
+
+    /* GSAP Reveal Hide Initial */
+    .gsap-reveal, .reveal {
+      visibility: hidden; /* Prevent FOUC before GSAP overrides it */
+    }
   </style>
 </head>
 <body>
@@ -840,12 +825,12 @@
     <!-- Right CTA -->
     <div class="nav-cta-wrap">
       {% if current_user and current_user.is_authenticated %}
-        <a href="{{ url_for('dashboard') }}" class="btn-nav btn-nav-primary">
+        <a href="{{ url_for('dashboard') }}" class="btn-nav btn-nav-primary magnetic-btn ripple-btn">
           <i class="fa-solid fa-gauge-high"></i> Dashboard
         </a>
       {% else %}
-        <a href="{{ url_for('login') }}" class="btn-nav btn-nav-ghost">Sign In</a>
-        <a href="{{ url_for('register') }}" class="btn-nav btn-nav-primary">
+        <a href="{{ url_for('login') }}" class="btn-nav btn-nav-ghost magnetic-btn ripple-btn">Sign In</a>
+        <a href="{{ url_for('register') }}" class="btn-nav btn-nav-primary magnetic-btn ripple-btn">
           <i class="fa-solid fa-user-plus"></i> Get Started
         </a>
       {% endif %}
@@ -880,17 +865,17 @@
 
       <div class="hero-btns">
         {% if current_user and current_user.is_authenticated %}
-          <a href="{{ url_for('dashboard') }}" class="btn-hero-primary">
+          <a href="{{ url_for('dashboard') }}" class="btn-hero-primary magnetic-btn ripple-btn">
             <i class="fa-solid fa-gauge-high"></i> Go to Dashboard
           </a>
-          <a href="{{ url_for('url_scanner') }}" class="btn-hero-outline">
+          <a href="{{ url_for('url_scanner') }}" class="btn-hero-outline magnetic-btn ripple-btn">
             <i class="fa-solid fa-magnifying-glass"></i> Scan a URL
           </a>
         {% else %}
-          <a href="{{ url_for('register') }}" class="btn-hero-primary">
+          <a href="{{ url_for('register') }}" class="btn-hero-primary magnetic-btn ripple-btn">
             <i class="fa-solid fa-user-plus"></i> Get Started — Free
           </a>
-          <a href="{{ url_for('dashboard') }}" class="btn-hero-outline">
+          <a href="{{ url_for('dashboard') }}" class="btn-hero-outline magnetic-btn ripple-btn">
             <i class="fa-solid fa-chart-line"></i> Explore Dashboard
           </a>
         {% endif %}
@@ -919,64 +904,10 @@
       </div>
     </div>
 
-    <!-- RIGHT: Globe Visual -->
+    <!-- RIGHT: Cyber Radar Visual (Removed) -->
     <div class="hero-visual">
-      <div class="globe-frame">
-
-        <!-- Orbit wrappers -->
-        <div class="orbit-wrapper">
-          <div class="orbit-dot orbit-dot-1"></div>
-        </div>
-        <div class="orbit-wrapper-2">
-          <div class="orbit-dot orbit-dot-2" style="top:auto;bottom:0;transform:translate(-50%,50%)"></div>
-        </div>
-
-        <!-- Outer rings -->
-        <div class="globe-ring"></div>
-        <div class="globe-inner-ring"></div>
-
-        <!-- Globe body -->
-        <div class="globe-body">
-          <div class="globe-grid"></div>
-          <div class="globe-pulse"></div>
-
-          <!-- Threat dots -->
-          <div class="globe-dot d-red"  style="top:28%;left:22%"></div>
-          <div class="globe-dot d-cyan" style="top:42%;left:55%"></div>
-          <div class="globe-dot d-red"  style="top:62%;left:70%"></div>
-          <div class="globe-dot d-grn"  style="top:35%;left:78%"></div>
-          <div class="globe-dot d-cyan" style="top:72%;left:30%"></div>
-          <div class="globe-dot d-red"  style="top:18%;left:60%"></div>
-
-          <!-- SVG arcs -->
-          <svg class="globe-arcs" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path class="arc-path arc-1" d="M22 28 Q50 5  78 35"/>
-            <path class="arc-path arc-2" d="M60 18 Q80 50 70 62"/>
-            <path class="arc-path arc-3" d="M55 42 Q40 80 30 72"/>
-          </svg>
-        </div>
-
-        <!-- Corner labels -->
-        <div class="globe-tag gt-tl">
-          <span class="globe-tag-dot" style="background:var(--red,#ff4560);box-shadow:0 0 6px #ff4560"></span>
-          THREATS
-        </div>
-        <div class="globe-tag gt-tr">
-          NODES
-          <span class="globe-tag-dot" style="background:var(--cyan);box-shadow:0 0 6px var(--cyan)"></span>
-        </div>
-        <div class="globe-tag gt-bl">
-          <span class="globe-tag-dot" style="background:var(--green);box-shadow:0 0 6px var(--green)"></span>
-          SAFE
-        </div>
-        <div class="globe-tag gt-br">
-          LIVE
-          <span class="globe-tag-dot" style="background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse-dot 1.4s ease-in-out infinite"></span>
-        </div>
-
-      </div>
+      <!-- Feature Visual Area Intentionally Left Blank -->
     </div>
-
   </section>
 
   <div class="lp-divider"></div>
@@ -1086,17 +1017,17 @@
       </p>
       <div class="cta-btns">
         {% if current_user and current_user.is_authenticated %}
-          <a href="{{ url_for('dashboard') }}" class="btn-hero-primary">
+          <a href="{{ url_for('dashboard') }}" class="btn-hero-primary magnetic-btn ripple-btn">
             <i class="fa-solid fa-gauge-high"></i> Go to Dashboard
           </a>
-          <a href="{{ url_for('url_scanner') }}" class="btn-hero-outline">
+          <a href="{{ url_for('url_scanner') }}" class="btn-hero-outline magnetic-btn ripple-btn">
             <i class="fa-solid fa-magnifying-glass"></i> Scan a URL Now
           </a>
         {% else %}
-          <a href="{{ url_for('register') }}" class="btn-hero-primary">
+          <a href="{{ url_for('register') }}" class="btn-hero-primary magnetic-btn ripple-btn">
             <i class="fa-solid fa-user-plus"></i> Get Started — Free
           </a>
-          <a href="{{ url_for('login') }}" class="btn-hero-outline">
+          <a href="{{ url_for('login') }}" class="btn-hero-outline magnetic-btn ripple-btn">
             <i class="fa-solid fa-right-to-bracket"></i> Sign In
           </a>
         {% endif %}
@@ -1254,6 +1185,10 @@
     stats.forEach(el => obs.observe(el));
   })();
   </script>
+
+  <!-- GSAP Scripts for smooth premium animations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
 
   <!-- main.js — handles: scroll reveal, 3D tilt, sidebar, active nav -->
   <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>

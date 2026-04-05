@@ -3,6 +3,7 @@
 # =============================
 from flask import Flask, render_template, request, redirect, url_for, flash, \
                   send_from_directory, jsonify
+from flask_cors import CORS
 import os
 import json
 import datetime
@@ -64,6 +65,7 @@ from models import Scan, User, PhishReport
 # APP CONFIG
 # =============================
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev_secret_key")
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///scans.db"
@@ -802,6 +804,57 @@ def update_report_status(report_id):
         return jsonify({"status": "ok", "new_status": new_status})
     except Exception as e:
         return jsonify({"error": "Failed to update report status", "details": str(e)}), 500
+
+
+# =============================
+# REACT FRONTEND API ROUTES (PUBLIC)
+# =============================
+
+@app.route("/scan-url", methods=["POST"])
+def api_scan_url():
+    """Public JSON endpoint for React frontend to scan a URL"""
+    try:
+        data = request.get_json() or {}
+        url = data.get("url") or request.form.get("url", "")
+        if not url:
+            return jsonify({"error": "URL is required"}), 400
+            
+        result = run_url_scan(url)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/scan-email", methods=["POST"])
+def api_scan_email():
+    """Public JSON endpoint for React frontend to scan an email/message"""
+    try:
+        data = request.get_json() or {}
+        message = data.get("message") or request.form.get("message", "")
+        if not message:
+            return jsonify({"error": "Message is required"}), 400
+            
+        result = analyze_message_text(message)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/get-threat-data", methods=["GET"])
+def api_get_threat_data():
+    """Public JSON endpoint returning threat intelligence data for the landing page"""
+    try:
+        phishing_feed = get_live_phishing_feed(limit=5)
+        advisories    = get_threat_advisories(count=3)
+        return jsonify({
+            "top_phishing": phishing_feed,
+            "threat_feed": advisories,
+            "stats": {
+                "phishing_count": len(get_live_phishing_feed()),
+                "advisory_count": len(get_threat_advisories()),
+                "report_count": PhishReport.query.count(),
+            }
+        })
+    except Exception as e:
+        return jsonify({"error": "Failed to fetch threat data", "details": str(e)}), 500
 
 
 # =============================
