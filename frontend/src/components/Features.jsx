@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Globe, Mail, Zap, ShieldAlert, Cpu } from 'lucide-react';
+import { Card } from './UI/Card';
 
 const features = [
   {
@@ -33,28 +34,20 @@ export default function Features() {
   return (
     <section id="features" className="py-24 relative z-10">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white mb-4">Enterprise Grade Security</h2>
-          <p className="text-gray-400">Our suite of tools is designed to proactively hunt and neutralize threats before they reach your network.</p>
+        <div className="text-center max-w-2xl mx-auto mb-20">
+          <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">Enterprise Grade Security</h2>
+          <p className="text-gray-400 text-lg">Our suite of tools is designed to proactively hunt and neutralize threats before they reach your network.</p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feat, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: idx * 0.1 }}
-              whileHover={{ y: -5 }}
-              className="glass p-6 rounded-2xl hover:bg-cardHover transition-colors group"
-            >
-              <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-6 border border-white/5 group-hover:border-white/10 transition-colors">
+            <Card key={idx} delay={idx * 0.1}>
+              <div className="w-14 h-14 rounded-2xl bg-white/[0.04] flex items-center justify-center mb-6 border border-white/[0.08] group-hover:border-white/[0.15] transition-colors shadow-inner">
                 {feat.icon}
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">{feat.title}</h3>
+              <h3 className="text-xl font-bold text-white mb-3">{feat.title}</h3>
               <p className="text-gray-400 text-sm leading-relaxed">{feat.desc}</p>
-            </motion.div>
+            </Card>
           ))}
         </div>
       </div>
