@@ -1,11 +1,12 @@
-﻿/* ============================================================
-   NEXUS – Global Stylesheet
-   Design system: refined dark · cyber · Apple-grade motion
+/* ============================================================
+   NEXUS – style.css  v2.0
+   Premium design layer: Loader · Cursor · Glassmorphism ·
+   Claymorphism · 3D · Micro-interactions · Parallax
+   All tokens from global.css are available here.
    ============================================================ */
 
-/* ── 1. DESIGN TOKENS ────────────────────────────────────── */
+/* ── 1. DESIGN TOKENS ─────────────────────────────────────── */
 :root {
-  /* Palette */
   --bg:           #0a0f1e;
   --bg-deep:      #060b17;
   --card:         #0d1526;
@@ -16,43 +17,35 @@
   --muted:        #64748b;
   --subtle:       #94a3b8;
 
-  /* Accent */
   --green:        #10b981;
   --blue:         #2d72d4;
   --cyan:         #00ffe7;
   --yellow:       #facc15;
   --red:          #ef4444;
+  --purple:       #8b5cf6;
 
-  /* Glow shadows */
   --glow-blue:    0 0 24px rgba(45, 114, 212, 0.30);
   --glow-cyan:    0 0 24px rgba(0, 255, 231, 0.28);
   --glow-green:   0 0 20px rgba(16, 185, 129, 0.28);
 
-  /* Shape */
   --radius:       14px;
   --radius-sm:    9px;
   --radius-pill:  999px;
   --shadow:       0 16px 40px rgba(0, 0, 0, 0.55);
   --shadow-hover: 0 28px 52px rgba(0, 0, 0, 0.70);
 
-  /* Motion — single source of truth */
-  --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-in-out:   cubic-bezier(0.4, 0, 0.2, 1);
-  --duration:      0.4s;
-  --duration-fast: 0.2s;
+  --ease-expo:    cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out:  cubic-bezier(0.4, 0, 0.2, 1);
+  --dur:          0.4s;
+  --dur-fast:     0.2s;
 
-  /* Glassmorphism */
-  --glass-blur:   blur(16px);
+  --glass-blur:   blur(18px);
   --glass-bg:     rgba(13, 21, 38, 0.68);
   --glass-border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* ── 2. RESET & BASE ─────────────────────────────────────── */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* ── 2. RESET & BASE ──────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
   -webkit-font-smoothing: antialiased;
@@ -66,17 +59,95 @@ body {
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   line-height: 1.6;
   min-height: 100vh;
-  /* Subtle noise texture for depth */
   background-image:
     radial-gradient(ellipse 80% 50% at 50% -20%, rgba(45,114,212,0.08) 0%, transparent 70%);
 }
 
-/* ── 3. GLOBAL TRANSITION SYSTEM ─────────────────────────── */
-/*
-  Applied selectively — NOT on every element (avoids layout thrashing).
-  We target the things that users actually interact with.
-*/
 
+/* ════════════════════════════════════════════════════════════
+   FULL-SCREEN PAGE LOADER
+════════════════════════════════════════════════════════════ */
+#nexus-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: #020408;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  transition: opacity 0.65s var(--ease-expo), transform 0.65s var(--ease-expo);
+}
+#nexus-loader.loader-out {
+  opacity: 0;
+  transform: scale(0.97);
+  pointer-events: none;
+}
+
+.loader-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  animation: loaderPulse 1.6s ease-in-out infinite;
+}
+.loader-hex {
+  width: 48px; height: 48px;
+  background: linear-gradient(135deg, #00ffe7, #2d72d4);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; color: #020408;
+  box-shadow: 0 0 32px rgba(0, 255, 231, 0.45);
+}
+.loader-name {
+  font-family: 'Orbitron', 'Inter', monospace;
+  font-size: 1.5rem; font-weight: 900;
+  letter-spacing: 0.22em;
+  background: linear-gradient(135deg, #fff, #00ffe7);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.loader-bar-wrap {
+  width: 220px; height: 2px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.loader-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #00ffe7, #2d72d4);
+  border-radius: 2px;
+  transition: width 0.4s var(--ease-expo);
+  box-shadow: 0 0 8px rgba(0,255,231,0.5);
+}
+
+.loader-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.65rem;
+  letter-spacing: 0.22em;
+  color: rgba(0,255,231,0.4);
+  text-transform: uppercase;
+  animation: loaderBlink 1.2s step-end infinite;
+}
+
+@keyframes loaderPulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.75; }
+}
+@keyframes loaderBlink {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+
+body.loading { overflow: hidden; }
+
+
+
+/* ════════════════════════════════════════════════════════════
+   TRANSITION SYSTEM
+════════════════════════════════════════════════════════════ */
 a,
 button,
 input,
@@ -91,15 +162,18 @@ select,
 .sidebar-link,
 .table-card {
   transition:
-    transform   var(--duration) var(--ease-out-expo),
-    box-shadow  var(--duration) var(--ease-out-expo),
-    opacity     var(--duration-fast) var(--ease-in-out),
-    background  var(--duration-fast) var(--ease-in-out),
-    border-color var(--duration-fast) var(--ease-in-out),
-    color       var(--duration-fast) var(--ease-in-out);
+    transform    var(--dur)      var(--ease-expo),
+    box-shadow   var(--dur)      var(--ease-expo),
+    opacity      var(--dur-fast) var(--ease-in-out),
+    background   var(--dur-fast) var(--ease-in-out),
+    border-color var(--dur-fast) var(--ease-in-out),
+    color        var(--dur-fast) var(--ease-in-out);
 }
 
-/* ── 4. CARDS ─────────────────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   GLASSMORPHISM CARDS
+════════════════════════════════════════════════════════════ */
 .card,
 .stat-card,
 .tool-card,
@@ -111,12 +185,12 @@ select,
   border-radius: var(--radius);
   padding: 22px;
   box-shadow: var(--shadow);
-  /* Hardware-accelerated from the start */
   will-change: transform, box-shadow;
   transform: translateZ(0);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
-/* Card hover — refined lift */
 .card:hover,
 .stat-card:hover,
 .tool-card:hover,
@@ -127,7 +201,7 @@ select,
   border-color: rgba(45, 114, 212, 0.28);
 }
 
-/* Glassmorphism card variant */
+/* Glass card variant */
 .glass-card {
   background: var(--glass-bg);
   backdrop-filter: var(--glass-blur);
@@ -135,14 +209,36 @@ select,
   border: var(--glass-border);
   box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,0.05);
 }
-
 .glass-card:hover {
   border-color: rgba(0, 255, 231, 0.15);
   box-shadow: var(--shadow-hover), var(--glow-blue),
               inset 0 1px 0 rgba(255,255,255,0.07);
 }
 
-/* ── 5. BUTTONS ───────────────────────────────────────────── */
+/* Glare overlay on cards */
+.feat-card, .step-card, .cta-card {
+  position: relative;
+}
+.feat-card::after, .step-card::after, .cta-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(
+    600px circle at var(--glare-x, 50%) var(--glare-y, 50%),
+    rgba(255, 255, 255, 0.055),
+    transparent 38%
+  );
+  opacity: var(--glare-opacity, 0);
+  transition: opacity 0.4s ease;
+  z-index: 2;
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   CLAYMORPHISM BUTTONS
+════════════════════════════════════════════════════════════ */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -159,34 +255,56 @@ select,
   will-change: transform;
 }
 
-/* Subtle ripple layer */
-.btn::after {
+/* Shimmer overlay */
+.btn::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(255, 255, 255, 0);
-  transition: background var(--duration-fast) var(--ease-in-out);
+  background: linear-gradient(130deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.12) 50%, rgba(255,255,255,0) 100%);
+  transform: translateX(-100%);
+  transition: transform 0.6s var(--ease-expo);
+  pointer-events: none;
 }
-.btn:hover::after  { background: rgba(255, 255, 255, 0.04); }
-.btn:active::after { background: rgba(255, 255, 255, 0.09); }
+.btn:hover::before {
+  transform: translateX(100%);
+}
 
-.btn:hover   { transform: scale(1.03) translateZ(0); }
-.btn:active  { transform: scale(0.98) translateZ(0); }
+.btn:hover  { transform: scale(1.03) translateZ(0); }
+.btn:active { transform: scale(0.97) translateZ(0); }
 
+/* Clay-style primary */
 .btn-primary {
   background: linear-gradient(135deg, var(--green), #0d9469);
   color: #021a14;
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.25);
+  box-shadow:
+    0 6px 20px rgba(16, 185, 129, 0.30),
+    0 2px 0 rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.20);
 }
-.btn-primary:hover  { box-shadow: 0 10px 28px rgba(16, 185, 129, 0.38); }
+.btn-primary:hover {
+  box-shadow:
+    0 12px 28px rgba(16, 185, 129, 0.42),
+    0 2px 0 rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.20);
+}
 
+/* Clay-style secondary */
 .btn-secondary {
   background: linear-gradient(135deg, var(--blue), #1a5cbf);
   color: #fff;
-  box-shadow: 0 6px 20px rgba(45, 114, 212, 0.25);
+  box-shadow:
+    0 6px 20px rgba(45, 114, 212, 0.30),
+    0 2px 0 rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.15);
 }
-.btn-secondary:hover { box-shadow: 0 10px 28px rgba(45, 114, 212, 0.38); }
+.btn-secondary:hover {
+  box-shadow:
+    0 12px 28px rgba(45, 114, 212, 0.42),
+    0 2px 0 rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.15);
+}
 
+/* Ghost */
 .btn-ghost {
   background: transparent;
   border: 1px solid rgba(148, 163, 184, 0.35);
@@ -198,8 +316,7 @@ select,
   background: rgba(255, 255, 255, 0.04);
 }
 
-.btn[disabled],
-.btn:disabled {
+.btn[disabled], .btn:disabled {
   opacity: 0.48;
   cursor: not-allowed;
   pointer-events: none;
@@ -217,16 +334,33 @@ select,
   border-radius: var(--radius-sm);
   border: none;
   cursor: pointer;
-  box-shadow: 0 4px 18px rgba(0, 255, 231, 0.22);
+  box-shadow:
+    0 4px 18px rgba(0, 255, 231, 0.22),
+    0 2px 0 rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255,255,255,0.25);
   will-change: transform;
+  position: relative;
+  overflow: hidden;
 }
+.btn-auth::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(130deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%);
+  transform: translateX(-100%);
+  transition: transform 0.6s var(--ease-expo);
+}
+.btn-auth:hover::before { transform: translateX(100%); }
 .btn-auth:hover {
   transform: scale(1.02) translateZ(0);
-  box-shadow: 0 8px 28px rgba(0, 255, 231, 0.38);
+  box-shadow: 0 8px 28px rgba(0, 255, 231, 0.40);
 }
 .btn-auth:active { transform: scale(0.99) translateZ(0); }
 
-/* ── 6. INPUTS ────────────────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   INPUTS
+════════════════════════════════════════════════════════════ */
 input[type="text"],
 input[type="email"],
 input[type="password"],
@@ -244,23 +378,27 @@ select {
   font-size: 0.9375rem;
   outline: none;
   transition:
-    border-color  var(--duration-fast) var(--ease-in-out),
-    box-shadow    var(--duration-fast) var(--ease-in-out),
-    background    var(--duration-fast) var(--ease-in-out);
+    border-color  var(--dur-fast) var(--ease-in-out),
+    box-shadow    var(--dur-fast) var(--ease-in-out),
+    background    var(--dur-fast) var(--ease-in-out);
 }
 
-input::placeholder,
-textarea::placeholder { color: var(--muted); }
+input::placeholder, textarea::placeholder { color: var(--muted); }
 
 input:focus,
 textarea:focus,
 select:focus {
   border-color: var(--cyan);
   background: rgba(0, 255, 231, 0.04);
-  box-shadow: 0 0 0 3px rgba(0, 255, 231, 0.12), 0 0 16px rgba(0, 255, 231, 0.06);
+  box-shadow:
+    0 0 0 3px rgba(0, 255, 231, 0.12),
+    0 0 20px rgba(0, 255, 231, 0.06);
 }
 
-/* ── 7. NAVBAR ────────────────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   APP NAVBAR  (inner-app pages)
+════════════════════════════════════════════════════════════ */
 .app-navbar {
   display: flex;
   justify-content: space-between;
@@ -305,7 +443,10 @@ select:focus {
   box-shadow: 0 0 20px rgba(0, 255, 231, 0.14);
 }
 
-/* ── 8. SIDEBAR ───────────────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   SIDEBAR (app layout)
+════════════════════════════════════════════════════════════ */
 .sidebar {
   width: 240px;
   flex-shrink: 0;
@@ -344,7 +485,10 @@ select:focus {
   box-shadow: inset 3px 0 0 var(--cyan);
 }
 
-/* ── 9. TABLE ─────────────────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   TABLE
+════════════════════════════════════════════════════════════ */
 .table-card { margin-top: 22px; }
 .table-wrap  { overflow-x: auto; }
 
@@ -354,7 +498,6 @@ table {
   border-spacing: 0 8px;
   min-width: 680px;
 }
-
 thead th {
   color: var(--muted);
   text-align: left;
@@ -364,18 +507,17 @@ thead th {
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-
 tbody tr {
   background: rgba(11, 18, 46, 0.85);
   border-radius: var(--radius-sm);
-  transition: background var(--duration-fast) var(--ease-in-out),
-              transform  var(--duration-fast) var(--ease-out-expo);
+  transition:
+    background var(--dur-fast) var(--ease-in-out),
+    transform  var(--dur-fast) var(--ease-expo);
 }
 tbody tr:hover {
   background: rgba(45, 114, 212, 0.12);
   transform: translateX(2px);
 }
-
 td {
   padding: 12px 14px;
   vertical-align: middle;
@@ -384,7 +526,10 @@ td {
 td:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
 td:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 
-/* ── 10. RISK / STATUS PILLS ──────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   STATUS PILLS & RISK BAR
+════════════════════════════════════════════════════════════ */
 .pill {
   display: inline-flex;
   align-items: center;
@@ -401,7 +546,6 @@ td:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 .pill.grey   { background: rgba(100,116,139,0.2); color: #94a3b8; }
 .pill.cyan   { background: rgba(0,255,231,0.12);  color: var(--cyan); }
 
-/* Risk bar */
 .risk-wrap {
   position: relative;
   height: 6px;
@@ -413,28 +557,25 @@ td:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
   height: 100%;
   background: linear-gradient(90deg, #10b981 0%, #facc15 50%, #ef4444 100%);
   border-radius: inherit;
-  transition: width 0.9s var(--ease-out-expo);
+  transition: width 0.9s var(--ease-expo);
 }
 
-/* ── 11. SCROLL REVEAL ────────────────────────────────────── */
-/*
-  Elements start hidden; main.js adds .revealed via IntersectionObserver.
-  No JS = no animation = graceful degradation.
-*/
+
+/* ════════════════════════════════════════════════════════════
+   SCROLL REVEAL
+════════════════════════════════════════════════════════════ */
 .reveal {
   opacity: 0;
   transform: translateY(18px) translateZ(0);
   transition:
-    opacity   0.55s var(--ease-out-expo),
-    transform 0.55s var(--ease-out-expo);
+    opacity   0.55s var(--ease-expo),
+    transform 0.55s var(--ease-expo);
   will-change: opacity, transform;
 }
 .reveal.revealed {
   opacity: 1;
   transform: translateY(0) translateZ(0);
 }
-
-/* Stagger siblings via CSS custom property injected by JS */
 .reveal:nth-child(1) { transition-delay: 0ms;   }
 .reveal:nth-child(2) { transition-delay: 60ms;  }
 .reveal:nth-child(3) { transition-delay: 120ms; }
@@ -442,12 +583,13 @@ td:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 .reveal:nth-child(5) { transition-delay: 240ms; }
 .reveal:nth-child(6) { transition-delay: 300ms; }
 
-/* Manual stagger class (JS-assigned inline delay) */
-[data-delay] {
-  transition-delay: attr(data-delay ms, 0ms);
-}
+/* GSAP hides these initially — prevent flash */
+.gsap-reveal { visibility: hidden; }
 
-/* ── 12. HERO / PAGE HEADER ───────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   PAGE HEADER  (inner-app)
+════════════════════════════════════════════════════════════ */
 .page-header,
 .dashboard-header {
   padding: 8px 0 20px;
@@ -470,20 +612,18 @@ td:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
   font-size: 0.9375rem;
 }
 
-/* Hero one-time fade (class added by JS on DOMContentLoaded) */
 .hero-ready {
-  animation: heroFade 0.65s var(--ease-out-expo) both;
+  animation: heroFade 0.65s var(--ease-expo) both;
 }
 @keyframes heroFade {
   from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0);    }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* ── 13. TILT HOST ────────────────────────────────────────── */
-/*
-  The JS tilt uses CSS transform; we ensure no conflict
-  with card hover transforms by using a dedicated wrapper approach.
-*/
+
+/* ════════════════════════════════════════════════════════════
+   3D TILT HOST
+════════════════════════════════════════════════════════════ */
 [data-tilt] {
   transform-style: preserve-3d;
   will-change: transform;
@@ -493,7 +633,44 @@ td:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
   border-radius: inherit;
 }
 
-/* ── 14. LAYOUT HELPERS ───────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   RIPPLE
+════════════════════════════════════════════════════════════ */
+.ripple-btn { position: relative; overflow: hidden; }
+
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  transform: scale(0);
+  background: rgba(255, 255, 255, 0.28);
+  animation: rippleAnim 0.65s var(--ease-expo);
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes rippleAnim {
+  to { transform: scale(4); opacity: 0; }
+}
+.ripple-btn > * { position: relative; z-index: 1; }
+
+
+/* ════════════════════════════════════════════════════════════
+   MAGNETIC BUTTON
+════════════════════════════════════════════════════════════ */
+.magnetic-btn {
+  will-change: transform;
+  transform: translate(var(--tx, 0px), var(--ty, 0px));
+  transition:
+    box-shadow    0.3s var(--ease-expo),
+    background    0.2s ease,
+    border-color  0.2s ease,
+    color         0.2s ease;
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   LAYOUT HELPERS
+════════════════════════════════════════════════════════════ */
 .app-container {
   max-width: 1120px;
   margin: 28px auto 48px;
@@ -506,19 +683,21 @@ td:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
   gap: 18px;
   margin-top: 22px;
 }
-@media (max-width: 960px)  { .card-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 620px)  { .card-grid { grid-template-columns: 1fr; } }
+@media (max-width: 960px) { .card-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 620px) { .card-grid { grid-template-columns: 1fr; } }
 
 .input-group       { display: grid; gap: 10px; }
 .input-group label { color: var(--muted); font-weight: 600; font-size: 0.875rem; }
 
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
-/* ── 15. LOADER SPINNER ───────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   SPIN LOADER (inline)
+════════════════════════════════════════════════════════════ */
 .spin-ring {
   display: inline-block;
-  width: 18px;
-  height: 18px;
+  width: 18px; height: 18px;
   border: 2.5px solid rgba(255,255,255,0.18);
   border-top-color: #fff;
   border-radius: 50%;
@@ -535,7 +714,10 @@ td:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
   color: var(--text);
 }
 
-/* ── 16. RESULT BLOCKS ────────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   RESULT BLOCKS
+════════════════════════════════════════════════════════════ */
 .result-block {
   margin-top: 16px;
   background: rgba(11,18,46,0.9);
@@ -543,14 +725,15 @@ td:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
   border-radius: var(--radius-sm);
   padding: 14px 16px;
 }
+.result-block.safe    { border-color: rgba(16,185,129,0.30); background: rgba(16,185,129,0.05); }
+.result-block.warning { border-color: rgba(250,204,21,0.30); background: rgba(250,204,21,0.05); }
+.result-block.danger  { border-color: rgba(239,68,68,0.30);  background: rgba(239,68,68,0.05);  }
 
-.result-block.safe     { border-color: rgba(16,185,129,0.30); background: rgba(16,185,129,0.05); }
-.result-block.warning  { border-color: rgba(250,204,21,0.30); background: rgba(250,204,21,0.05); }
-.result-block.danger   { border-color: rgba(239,68,68,0.30);  background: rgba(239,68,68,0.05);  }
 
-/* ── 17. FOOTER ───────────────────────────────────────────── */
-.footer,
-.app-footer {
+/* ════════════════════════════════════════════════════════════
+   FOOTER
+════════════════════════════════════════════════════════════ */
+.footer, .app-footer {
   text-align: center;
   color: rgba(203,213,225,0.5);
   font-size: 0.8125rem;
@@ -559,19 +742,24 @@ td:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 }
 .footer strong { color: rgba(255,255,255,0.75); }
 
-/* ── 18. SCROLLBAR ────────────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   SCROLLBAR
+════════════════════════════════════════════════════════════ */
 ::-webkit-scrollbar       { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.35); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.55); }
 
-/* ── 19. SELECTION ────────────────────────────────────────── */
 ::selection {
   background: rgba(0, 255, 231, 0.20);
   color: #fff;
 }
 
-/* ── 20. RESPONSIVE ───────────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   RESPONSIVE
+════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
   .app-container { padding: 0 14px; }
   .page-header h1,
@@ -582,12 +770,16 @@ td:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
   .nav-link    { padding: 7px 10px; font-size: 0.8125rem; }
 }
 
-/* ── 21. REDUCED MOTION ───────────────────────────────────── */
+
+/* ════════════════════════════════════════════════════════════
+   REDUCED MOTION
+════════════════════════════════════════════════════════════ */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration:   0.01ms !important;
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration:  0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
   .reveal { opacity: 1 !important; transform: none !important; }
+  #nexus-loader { display: none !important; }
 }
