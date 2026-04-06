@@ -39,3 +39,6 @@ Flask-Dance
 # API Requests
 requests
 oauthlib
+
+# CORS
+flask-cors
