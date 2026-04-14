@@ -220,14 +220,22 @@
       });
     }
 
-    // 2) BAR CHART — Threats per Country (top 10)
+    // 2) BAR CHART — Top Scanned Domains (top 10)
     const barEl = document.getElementById('chart-bar');
     if (barEl) {
-      const countryCounts = {};
+      const domainCounts = {};
       data.forEach(d => {
-        countryCounts[d.country] = (countryCounts[d.country] || 0) + 1;
+        try {
+          const urlObj = new URL((d.url || "").startsWith("http") ? d.url : "http://" + d.url);
+          const domain = urlObj.hostname.replace("www.", "");
+          domainCounts[domain] = (domainCounts[domain] || 0) + 1;
+        } catch (_) {
+            if (d.url) {
+                domainCounts[d.url] = (domainCounts[d.url] || 0) + 1;
+            }
+        }
       });
-      const sorted = Object.entries(countryCounts)
+      const sorted = Object.entries(domainCounts)
         .sort((a,b) => b[1]-a[1]).slice(0,10);
 
       const barColors = sorted.map(([,count]) => {
@@ -377,16 +385,9 @@
     try {
       let data = [];
       try {
-        const res = await fetch('/api/threat-map', { credentials: 'same-origin' });
+        const res = await fetch('/api/user-scans-analytics', { credentials: 'same-origin' });
         if (res.ok) data = await res.json();
       } catch(_) {}
-
-      // Supplement with fake data if insufficient
-      if (!Array.isArray(data) || data.length < 10) {
-        data = generateFakeData(40);
-      } else if (data.length < 20) {
-        data = [...data, ...generateFakeData(20 - data.length)];
-      }
 
       document.querySelectorAll('.chart-skeleton').forEach(el => el.classList.remove('loading'));
       initDashboardCharts(data);
@@ -394,7 +395,7 @@
     } catch(err) {
       console.warn('[Analytics] Chart load error:', err);
       document.querySelectorAll('.chart-skeleton').forEach(el => el.classList.remove('loading'));
-      initDashboardCharts(generateFakeData(40));
+      initDashboardCharts([]);
     }
   }
 

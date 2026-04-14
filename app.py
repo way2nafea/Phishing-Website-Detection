@@ -1001,6 +1001,32 @@ def dashboard():
     return render_template("dashboard.html", scans=scans)
 
 
+@app.route("/api/user-scans-analytics")
+@login_required
+def user_scans_analytics():
+    """Returns the current user's scan history as JSON for the dashboard charts."""
+    scans = Scan.query.filter_by(user_id=current_user.id).all()
+    data = []
+    for s in scans:
+        # Calculate severity based on risk score thresholds
+        score = s.risk_score if s.risk_score is not None else 0
+        if score >= 70:
+            severity = "HIGH"
+        elif score >= 30:
+            severity = "MEDIUM"
+        else:
+            severity = "LOW"
+            
+        data.append({
+            "url": s.url,
+            "risk_score": score,
+            "severity": severity,
+            "time": s.created_at.isoformat() + "Z" if s.created_at else "",
+            "result": s.result
+        })
+    return jsonify(data)
+
+
 # =============================
 # PASSWORD RESET
 # =============================
