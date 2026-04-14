@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -29,7 +29,6 @@
     }
     .tool-card:hover {
       border-color: var(--border-glow);
-      transform: translateY(-2px);
       box-shadow: var(--shadow-card);
     }
 
@@ -409,7 +408,7 @@ document.querySelectorAll('.tool-card form').forEach(form => {
   });
 });
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.7.0/vanilla-tilt.min.js"></script>
+<!-- NEXUS unified tilt system (no CDN dependency) -->
 <script src="{{ url_for('static', filename='js/tilt.js') }}"></script>
 <!-- NEXUS motion system -->
 <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>

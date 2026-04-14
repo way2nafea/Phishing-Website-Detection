@@ -9,6 +9,7 @@ import json
 import datetime
 import numpy as np
 
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -128,6 +129,7 @@ google_blueprint = make_google_blueprint(
 app.register_blueprint(google_blueprint, url_prefix='/login')
 
 
+
 # ─── Google OAuth Signal Handler ───────────────────────────────────────────────
 @oauth_authorized.connect_via(google_blueprint)
 def google_logged_in(blueprint, token):
@@ -245,6 +247,15 @@ def analyze_message_text(message):
         status = "PHISHING"
     elif score >= 40:
         status = "SUSPICIOUS"
+
+    return {
+        "message": message,
+        "urls": urls,
+        "issues": issues,
+        "risk_score": score,
+        "status": status,
+    }
+
 
     return {
         "message": message,
@@ -501,6 +512,7 @@ def run_url_scan(raw_url):
     prediction = ""
     xx = 0
 
+
     if contains_ip(domain):
         prediction = "⚠️ Website uses IP address instead of domain (High Risk)"
         risk_score = 90
@@ -566,6 +578,7 @@ def run_url_scan(raw_url):
         "prediction": prediction,
         "xx": xx,
     }
+
 
 
 def assistant_suggestion(raw_url):

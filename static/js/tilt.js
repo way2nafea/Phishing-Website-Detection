@@ -1,32 +1,36 @@
 /**
- * PhishGuard AI — 3D Card Tilt Effect
+ * NEXUS — Unified 3D Card Tilt System  v3.0
  * static/js/tilt.js
  *
- * Strategy:
- *   1. If VanillaTilt (CDN) is loaded  → use it (reads data-tilt-* attributes natively)
- *   2. Otherwise                       → fall back to custom vanilla-JS implementation
+ * Single source of truth for ALL tilt interactions.
+ * Apple-level subtle, smooth, and controlled.
  *
- * VanillaTilt CDN must be included BEFORE this file:
- *   <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.7.0/vanilla-tilt.min.js"></script>
- *   <script src="{{ url_for('static', filename='js/tilt.js') }}"></script>
+ * Features:
+ *   - Max rotation clamped to 4 degrees
+ *   - Smooth interpolation via requestAnimationFrame
+ *   - Damped follow (no direct snapping)
+ *   - Graceful reset on mouse leave
+ *   - Subtle glare overlay
+ *   - Works consistently across all pages
+ *
+ * NOTE: VanillaTilt CDN is NO LONGER needed.
  */
 
 (function () {
   'use strict';
 
-  /* ─── SHARED CONFIG ──────────────────────────────────────── */
-  const TILT_OPTIONS = {
-    max:           8,
-    speed:         400,
-    glare:         true,
-    'max-glare':   0.15,
-    scale:         1.03,
-    perspective:   900,
-    easing:        'cubic-bezier(0.03,0.98,0.52,0.99)',
-    gyroscope:     false,
+  /* ─── CONFIG ──────────────────────────────────────────────── */
+  const CFG = {
+    maxTilt:       4,          // degrees — subtle, premium feel
+    perspective:   1000,       // px
+    scale:         1.015,      // very subtle zoom on hover
+    damping:       0.08,       // lerp factor — lower = smoother/slower follow
+    glareOpacity:  0.10,       // max glare brightness
+    glareSize:     60,         // % radius of glare spotlight
+    resetSpeed:    0.06,       // lerp factor for reset animation
   };
 
-  /* All selectors that should receive the tilt effect */
+  /* All selectors that receive the tilt effect */
   const SELECTORS = [
     '.stat-card',
     '.content-card',
@@ -35,62 +39,40 @@
     '.auth-card',
     '.intel-card',
     '.tilt-card',
+    '.feat-card',
+    '.step-card',
     '[data-tilt]',
   ].join(', ');
 
   /* ─── MOBILE CHECK ───────────────────────────────────────── */
   function isMobile() {
-    return window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
+    return window.matchMedia('(pointer: coarse)').matches
+        || window.matchMedia('(hover: none)').matches
+        || window.innerWidth < 768;
   }
 
-  /* ═══════════════════════════════════════════════════════════
-   *  PATH A — VanillaTilt CDN is available
-   * ═══════════════════════════════════════════════════════════ */
-  function initWithVanillaTilt() {
-    if (isMobile()) return;
-
-    const elements = document.querySelectorAll(SELECTORS);
-    if (!elements.length) return;
-
-    VanillaTilt.init(elements, TILT_OPTIONS);
-
-    /* Watch for dynamically added cards */
-    const observer = new MutationObserver(mutations => {
-      mutations.forEach(m => {
-        m.addedNodes.forEach(node => {
-          if (node.nodeType !== 1) return;
-          const targets = [];
-          if (node.matches && node.matches(SELECTORS)) targets.push(node);
-          if (node.querySelectorAll) {
-            node.querySelectorAll(SELECTORS).forEach(el => targets.push(el));
-          }
-          if (targets.length) VanillaTilt.init(targets, TILT_OPTIONS);
-        });
-      });
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
+  /* ─── REDUCED MOTION CHECK ───────────────────────────────── */
+  function prefersReducedMotion() {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
-  /* ═══════════════════════════════════════════════════════════
-   *  PATH B — Custom vanilla-JS fallback (no CDN dependency)
-   * ═══════════════════════════════════════════════════════════ */
+  /* ─── LERP UTILITY ───────────────────────────────────────── */
+  function lerp(current, target, factor) {
+    return current + (target - current) * factor;
+  }
 
-  /* ─── CUSTOM CONFIG ─ */
-  const CFG = {
-    maxTilt:       8,
-    glareOpacity:  0.15,
-    perspective:   900,
-    scale:         1.03,
-    speed:         400,
-    easing:        'cubic-bezier(0.03,0.98,0.52,0.99)',
-    glareSize:     70,
-    resetDuration: 600,
-  };
+  /* ─── CLAMP ──────────────────────────────────────────────── */
+  function clamp(val, min, max) {
+    return Math.min(max, Math.max(min, val));
+  }
 
-  /* ─── BUILD GLARE OVERLAY ─ */
+  /* ─── BUILD GLARE OVERLAY ────────────────────────────────── */
   function createGlare(card) {
+    // Prevent duplicates
+    if (card.querySelector('.nexus-tilt-glare')) return null;
+
     const wrap = document.createElement('div');
-    wrap.className = 'pg-tilt-glare';
+    wrap.className = 'nexus-tilt-glare';
     Object.assign(wrap.style, {
       position:      'absolute',
       inset:         '0',
@@ -101,7 +83,7 @@
     });
 
     const inner = document.createElement('div');
-    inner.className = 'pg-tilt-glare-inner';
+    inner.className = 'nexus-tilt-glare-inner';
     Object.assign(inner.style, {
       position:     'absolute',
       width:        `${CFG.glareSize * 2}%`,
@@ -110,110 +92,164 @@
       background:   `radial-gradient(ellipse at center,
                        rgba(255,255,255,${CFG.glareOpacity}) 0%,
                        rgba(255,255,255,0) 70%)`,
-      transform:    'translate(-50%,-50%)',
+      transform:    'translate(-50%, -50%)',
       left:         '50%',
       top:          '0%',
       opacity:      '0',
-      transition:   `opacity ${CFG.speed}ms ${CFG.easing}`,
+      transition:   'opacity 0.4s ease',
     });
 
     wrap.appendChild(inner);
+
     const pos = getComputedStyle(card).position;
     if (!pos || pos === 'static') card.style.position = 'relative';
     card.appendChild(wrap);
+
     return inner;
   }
 
-  /* ─── APPLY TILT TO ONE ELEMENT ─ */
-  function applyTilt(card) {
-    if (card._pgTiltInit) return;
-    card._pgTiltInit = true;
+  /* ─── DESTROY EXISTING TILT INSTANCES ────────────────────── */
+  function destroyExisting(card) {
+    // Remove VanillaTilt if it was initialized
+    if (card.vanillaTilt) {
+      try { card.vanillaTilt.destroy(); } catch(_) {}
+      delete card.vanillaTilt;
+    }
+    // Remove our old glare overlays
+    card.querySelectorAll('.pg-tilt-glare').forEach(el => el.remove());
+  }
 
+  /* ═══════════════════════════════════════════════════════════
+   *  APPLY SMOOTH TILT TO ONE ELEMENT
+   * ═══════════════════════════════════════════════════════════ */
+  function applyTilt(card) {
+    // Prevent double-init
+    if (card._nexusTiltV3) return;
+    card._nexusTiltV3 = true;
+
+    // Clean up any previous tilt systems
+    destroyExisting(card);
+
+    // Setup card styles
     card.style.transformStyle = 'preserve-3d';
     card.style.willChange     = 'transform';
-    card.style.transition     = `transform ${CFG.speed}ms ${CFG.easing}`;
 
     const glareEl = createGlare(card);
-    let raf = null;
-    let targetRX = 0, targetRY = 0;
-    let curRX    = 0, curRY    = 0;
 
-    function lerp(a, b, t) { return a + (b - a) * t; }
+    // State
+    let targetRX  = 0,  targetRY = 0;     // target rotation
+    let currentRX = 0,  currentRY = 0;    // current (interpolated) rotation
+    let isHovering = false;
+    let rafId = null;
 
-    function animate() {
-      curRX = lerp(curRX, targetRX, 0.12);
-      curRY = lerp(curRY, targetRY, 0.12);
+    /* ─── ANIMATION LOOP ─────────────────────────────────── */
+    function tick() {
+      const factor = isHovering ? CFG.damping : CFG.resetSpeed;
 
-      card.style.transform = `
-        perspective(${CFG.perspective}px)
-        rotateX(${curRX}deg)
-        rotateY(${curRY}deg)
-        scale3d(${CFG.scale},${CFG.scale},${CFG.scale})
-      `;
+      currentRX = lerp(currentRX, targetRX, factor);
+      currentRY = lerp(currentRY, targetRY, factor);
 
-      if (Math.abs(curRX - targetRX) > 0.01 || Math.abs(curRY - targetRY) > 0.01) {
-        raf = requestAnimationFrame(animate);
+      // Clamp for safety
+      currentRX = clamp(currentRX, -CFG.maxTilt, CFG.maxTilt);
+      currentRY = clamp(currentRY, -CFG.maxTilt, CFG.maxTilt);
+
+      const scale = isHovering ? CFG.scale : 1;
+
+      card.style.transform =
+        `perspective(${CFG.perspective}px) ` +
+        `rotateX(${currentRX.toFixed(3)}deg) ` +
+        `rotateY(${currentRY.toFixed(3)}deg) ` +
+        `scale3d(${scale}, ${scale}, 1)`;
+
+      // Keep animating if we haven't settled
+      const dx = Math.abs(currentRX - targetRX);
+      const dy = Math.abs(currentRY - targetRY);
+
+      if (dx > 0.01 || dy > 0.01) {
+        rafId = requestAnimationFrame(tick);
       } else {
-        raf = null;
+        // Snap to final value
+        currentRX = targetRX;
+        currentRY = targetRY;
+
+        if (!isHovering && targetRX === 0 && targetRY === 0) {
+          card.style.transform = '';
+        }
+        rafId = null;
       }
     }
 
-    function onMove(e) {
-      if (isMobile()) return;
-      const rect  = card.getBoundingClientRect();
-      const dx    = (e.clientX - rect.left - rect.width  / 2) / (rect.width  / 2);
-      const dy    = (e.clientY - rect.top  - rect.height / 2) / (rect.height / 2);
-
-      targetRY = dx *  CFG.maxTilt;
-      targetRX = dy * -CFG.maxTilt;
-
-      glareEl.style.left    = `${((e.clientX - rect.left) / rect.width)  * 100}%`;
-      glareEl.style.top     = `${((e.clientY - rect.top)  / rect.height) * 100}%`;
-      glareEl.style.opacity = '1';
-
-      if (!raf) raf = requestAnimationFrame(animate);
+    function startAnimation() {
+      if (!rafId) rafId = requestAnimationFrame(tick);
     }
 
-    function onEnter() {
+    /* ─── EVENT HANDLERS ─────────────────────────────────── */
+    function onMouseMove(e) {
       if (isMobile()) return;
-      card.style.transition  = `transform ${CFG.speed}ms ${CFG.easing}`;
-      glareEl.style.opacity  = '1';
-      glareEl.style.transition = `opacity ${CFG.speed}ms ease, left 0.1s ease, top 0.1s ease`;
+
+      const rect = card.getBoundingClientRect();
+      const dx   = (e.clientX - rect.left - rect.width  / 2) / (rect.width  / 2);
+      const dy   = (e.clientY - rect.top  - rect.height / 2) / (rect.height / 2);
+
+      // Set target (clamped)
+      targetRY =  clamp(dx * CFG.maxTilt, -CFG.maxTilt, CFG.maxTilt);
+      targetRX =  clamp(dy * -CFG.maxTilt, -CFG.maxTilt, CFG.maxTilt);
+
+      // Update glare position
+      if (glareEl) {
+        const gx = ((e.clientX - rect.left) / rect.width)  * 100;
+        const gy = ((e.clientY - rect.top)  / rect.height) * 100;
+        glareEl.style.left    = gx + '%';
+        glareEl.style.top     = gy + '%';
+        glareEl.style.opacity = '1';
+      }
+
+      startAnimation();
     }
 
-    function onLeave() {
+    function onMouseEnter() {
       if (isMobile()) return;
-      targetRX = 0; targetRY = 0;
-      glareEl.style.opacity = '0';
-      if (!raf) raf = requestAnimationFrame(animate);
-
-      setTimeout(() => {
-        curRX = 0; curRY = 0;
-        card.style.transform = `
-          perspective(${CFG.perspective}px)
-          rotateX(0deg) rotateY(0deg) scale3d(1,1,1)
-        `;
-      }, CFG.resetDuration);
+      isHovering = true;
     }
 
-    card.addEventListener('mousemove',  onMove,  { passive: true });
-    card.addEventListener('mouseenter', onEnter, { passive: true });
-    card.addEventListener('mouseleave', onLeave, { passive: true });
+    function onMouseLeave() {
+      if (isMobile()) return;
+      isHovering = false;
+      targetRX = 0;
+      targetRY = 0;
+
+      if (glareEl) {
+        glareEl.style.opacity = '0';
+      }
+
+      startAnimation();
+    }
+
+    /* ─── BIND EVENTS ────────────────────────────────────── */
+    card.addEventListener('mousemove',  onMouseMove,  { passive: true });
+    card.addEventListener('mouseenter', onMouseEnter, { passive: true });
+    card.addEventListener('mouseleave', onMouseLeave, { passive: true });
   }
 
+  /* ═══════════════════════════════════════════════════════════
+   *  INIT
+   * ═══════════════════════════════════════════════════════════ */
   function initAll() {
-    if (isMobile()) return;
+    if (isMobile() || prefersReducedMotion()) return;
     document.querySelectorAll(SELECTORS).forEach(applyTilt);
   }
 
+  /* Watch for dynamically added cards */
   function watchDom() {
-    if (isMobile()) return;
+    if (isMobile() || prefersReducedMotion()) return;
     const observer = new MutationObserver(mutations => {
       mutations.forEach(m => {
         m.addedNodes.forEach(node => {
           if (node.nodeType !== 1) return;
           if (node.matches && node.matches(SELECTORS)) applyTilt(node);
-          if (node.querySelectorAll) node.querySelectorAll(SELECTORS).forEach(applyTilt);
+          if (node.querySelectorAll) {
+            node.querySelectorAll(SELECTORS).forEach(applyTilt);
+          }
         });
       });
     });
@@ -221,19 +257,12 @@
   }
 
   /* ═══════════════════════════════════════════════════════════
-   *  BOOT — pick the right path and initialise
+   *  BOOT
    * ═══════════════════════════════════════════════════════════ */
   function boot() {
-    if (isMobile()) return;
-
-    if (typeof window.VanillaTilt !== 'undefined') {
-      /* ── VanillaTilt CDN loaded ── */
-      initWithVanillaTilt();
-    } else {
-      /* ── Custom fallback ── */
-      initAll();
-      watchDom();
-    }
+    if (isMobile() || prefersReducedMotion()) return;
+    initAll();
+    watchDom();
   }
 
   if (document.readyState === 'loading') {
@@ -243,8 +272,9 @@
   }
 
   /* ─── PUBLIC API ─────────────────────────────────────────── */
-  window.PhishGuardTilt = {
+  window.NexusTilt = {
     init:     boot,
+    apply:    applyTilt,
     isMobile: isMobile,
   };
 

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -450,7 +450,7 @@
                   {% endif %}
                 </ul>
               </div>
-              <a class="btn btn-primary" href="{{ url_for('index', url=suggestion.raw_url) }}">
+              <a class="btn btn-primary" id="deepScanBtn" href="{{ url_for('url_scanner') }}?url={{ suggestion.raw_url|urlencode }}">
                 <i class="fa-solid fa-shield-halved"></i> Run Full Deep Scan
               </a>
             </div>
@@ -917,9 +917,43 @@ async function forceRefresh() {
   }
 }
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.7.0/vanilla-tilt.min.js"></script>
+<!-- NEXUS unified tilt system (no CDN dependency) -->
 <script src="{{ url_for('static', filename='js/tilt.js') }}"></script>
 <!-- NEXUS motion system -->
 <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+<script>
+// Deep Scan: auto-submit form on url_scanner page via POST
+(function() {
+  const deepBtn = document.getElementById('deepScanBtn');
+  if (!deepBtn) return;
+
+  deepBtn.addEventListener('click', function(e) {
+    e.preventDefault();
+
+    // Extract the URL from the suggestion
+    const targetUrl = '{{ suggestion.raw_url|default("") }}';
+    if (!targetUrl) return;
+
+    // Create a hidden form that POSTs to url_scanner
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '{{ url_for("url_scanner") }}';
+    form.style.display = 'none';
+
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'url';
+    input.value = targetUrl;
+    form.appendChild(input);
+
+    // Show loading state on button
+    deepBtn.innerHTML = '<span class="spin-ring" style="width:14px;height:14px;border-width:2px"></span> Scanning…';
+    deepBtn.style.pointerEvents = 'none';
+
+    document.body.appendChild(form);
+    form.submit();
+  });
+})();
+</script>
 </body>
 </html>

@@ -306,43 +306,10 @@
   }
 
   /* ══════════════════════════════════════════════════════════════
-     9. 3D CARD TILT + GLARE  (replaces removed tilt section)
+     9. CARD TILT — handled by tilt.js (unified system)
   ══════════════════════════════════════════════════════════════ */
-  function initCardTilt() {
-    if (IS_TOUCH || REDUCED) return;
-    const cards = document.querySelectorAll('[data-tilt], .feat-card, .step-card');
-    const MAX   = 6; // degrees
-
-    cards.forEach(card => {
-      card.style.transformStyle = 'preserve-3d';
-      card.style.willChange     = 'transform';
-
-      card.addEventListener('mousemove', e => {
-        const rect = card.getBoundingClientRect();
-        const cx   = (e.clientX - rect.left) / rect.width;
-        const cy   = (e.clientY - rect.top)  / rect.height;
-        const rx   = (cy - 0.5) * -MAX * 2;
-        const ry   = (cx - 0.5) *  MAX * 2;
-
-        card.style.transform = `perspective(600px) rotateX(${rx}deg) rotateY(${ry}deg) scale(1.025)`;
-
-        // Glare position
-        card.style.setProperty('--glare-x', `${cx * 100}%`);
-        card.style.setProperty('--glare-y', `${cy * 100}%`);
-        card.style.setProperty('--glare-opacity', '1');
-      }, { passive: true });
-
-      card.addEventListener('mouseleave', () => {
-        if (typeof gsap !== 'undefined') {
-          gsap.to(card, { rotateX: 0, rotateY: 0, scale: 1, duration: 0.6, ease: 'power3.out',
-            clearProps: 'rotateX,rotateY,scale' });
-        } else {
-          card.style.transform = '';
-        }
-        card.style.setProperty('--glare-opacity', '0');
-      });
-    });
-  }
+  // Removed: initCardTilt() — tilt.js is now the single source of truth
+  // for all card tilt + glare interactions across all pages.
 
   /* ══════════════════════════════════════════════════════════════
      10. STAT COUNTER ANIMATION
@@ -428,25 +395,10 @@
   }
 
   /* ══════════════════════════════════════════════════════════════
-     15. GLARE EFFECT ON CARDS (mouse follows)
+     15. GLARE — handled by tilt.js (unified system)
   ══════════════════════════════════════════════════════════════ */
-  function initGlare() {
-    if (IS_TOUCH) return;
-    const cards = document.querySelectorAll('.feat-card,.step-card,.cta-card');
-    cards.forEach(card => {
-      card.addEventListener('mousemove', e => {
-        const rect = card.getBoundingClientRect();
-        const x = ((e.clientX - rect.left) / rect.width  * 100).toFixed(1) + '%';
-        const y = ((e.clientY - rect.top)  / rect.height * 100).toFixed(1) + '%';
-        card.style.setProperty('--glare-x', x);
-        card.style.setProperty('--glare-y', y);
-        card.style.setProperty('--glare-opacity', '1');
-      }, { passive: true });
-      card.addEventListener('mouseleave', () => {
-        card.style.setProperty('--glare-opacity', '0');
-      });
-    });
-  }
+  // Removed: initGlare() — tilt.js handles glare as part of the
+  // unified tilt system to avoid duplicate mousemove listeners.
 
   /* ══════════════════════════════════════════════════════════════
      INIT — ordered carefully
@@ -458,8 +410,7 @@
     initNavbar();
     initMagneticButtons();
     initRipples();
-    initCardTilt();
-    initGlare();
+    // Card tilt + glare now handled by tilt.js (unified system)
     initCounters();
     initSidebar();
     initFormLoaders();

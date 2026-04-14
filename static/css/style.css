@@ -196,7 +196,6 @@ select,
 .tool-card:hover,
 .info-card:hover,
 .table-card:hover {
-  transform: translateY(-4px) translateZ(0);
   box-shadow: var(--shadow-hover);
   border-color: rgba(45, 114, 212, 0.28);
 }
@@ -622,11 +621,25 @@ td:last-child  { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
 
 
 /* ════════════════════════════════════════════════════════════
-   3D TILT HOST
+   3D TILT HOST  (unified tilt.js system)
 ════════════════════════════════════════════════════════════ */
-[data-tilt] {
+[data-tilt],
+.stat-card,
+.content-card,
+.result-card,
+.tool-card,
+.auth-card,
+.intel-card,
+.tilt-card,
+.feat-card,
+.step-card {
   transform-style: preserve-3d;
   will-change: transform;
+  /* Smooth transition when tilt.js sets transform via rAF —
+     this also handles the reset animation on mouseleave */
+  transition:
+    box-shadow   var(--dur) var(--ease-expo),
+    border-color var(--dur-fast) var(--ease-in-out);
 }
 [data-tilt] .tilt-inner {
   transform: translateZ(0);
