@@ -299,14 +299,19 @@
             {% endif %}
 
             <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
-              <a href="{{ url_for('ai_assistant') }}?url={{ url }}" class="btn btn-cyan">
-                <i class="fa-solid fa-robot"></i> Full AI Analysis
-              </a>
+              <button type="button" class="btn btn-cyan" id="explainAiBtn" onclick="runAiExplanation('{{ url|escape }}', '{{ score }}', '{{ prediction|escape }}')">
+                <i class="fa-solid fa-robot"></i> Explain with AI
+              </button>
               <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">
                 <i class="fa-solid fa-chart-line"></i> View Dashboard
               </a>
             </div>
           </div>
+        </div>
+
+        <div id="aiExplanationWrapper" style="display:none; margin-top: 15px; padding: 20px; border-radius: var(--radius-sm); border-left: 4px solid var(--accent-cyan); background: rgba(0, 255, 198, 0.05)">
+          <div style="font-size: 0.95rem; font-weight: 600; margin-bottom: 10px; color: var(--accent-cyan);"><i class="fa-solid fa-microchip" style="margin-right:8px;"></i>AI Explainer</div>
+          <div id="aiExplanationContent" style="font-size: 0.85rem; font-family: var(--font-mono); color: var(--text-secondary); line-height: 1.6; white-space: pre-wrap;"></div>
         </div>
       {% endif %}
 
@@ -357,7 +362,57 @@ if (toggle) {
   overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('active'); });
 }
 
-// Scan form — loading state + steps animation
+// Global state for result data
+let currentScanData = null;
+
+// AI Explainer logic
+window.runAiExplanation = async function(url, score, prediction) {
+  const btn = document.getElementById('explainAiBtn');
+  const wrap = document.getElementById('aiExplanationWrapper');
+  const content = document.getElementById('aiExplanationContent');
+  if(!btn) return;
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin-ring" style="width:14px;height:14px;border-width:2px;margin-right:6px;"></span> Processing...';
+  // Don't hide if already showing, just dim
+  wrap.style.opacity = '0.7';
+
+  try {
+    const res = await fetch('/explain_ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: url, risk_score: score, prediction: prediction })
+    });
+    const data = await res.json();
+    
+    // Structured display
+    content.innerHTML = `
+<div style="margin-bottom:12px; padding:10px; border-radius:4px; background:rgba(255,255,255,0.03); border:1px solid rgba(0,255,198,0.1)">
+  <div style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; margin-bottom:4px;">Risk Assessment</div>
+  <div style="font-size:1.1rem; color:var(--accent-cyan); font-weight:700;">${data.risk_level} LEVEL THREAD</div>
+</div>
+<div style="margin-bottom:12px;">
+  <div style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; margin-bottom:6px;">Analysis Details</div>
+  <div style="line-height:1.7;">${data.explanation.split('\n').map(line => `<div style="margin-bottom:4px;">${line}</div>`).join('')}</div>
+</div>
+<div style="padding:10px; border-radius:4px; background:rgba(0,255,198,0.08); border-left:3px solid var(--accent-cyan);">
+  <div style="color:var(--accent-cyan); font-size:0.7rem; text-transform:uppercase; font-weight:700; margin-bottom:4px;">Recommendation</div>
+  <div style="color:var(--text-primary); font-size:0.9rem;">${data.recommendation}</div>
+</div>`;
+    
+    wrap.style.display = 'block';
+    wrap.style.opacity = '1';
+  } catch (err) {
+    content.innerHTML = '<div style="color:var(--danger)">❌ Analysis failed. Please check network connection.</div>';
+    wrap.style.display = 'block';
+    wrap.style.opacity = '1';
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-robot"></i> Explain with AI';
+  }
+}
+
+// AJAX Scan Handler
 const scanForm = document.getElementById('scanForm');
 if (scanForm) {
   const steps = [
@@ -369,47 +424,153 @@ if (scanForm) {
     'Calculating risk score…',
   ];
 
-  scanForm.addEventListener('submit', function() {
+  scanForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
     const btn    = document.getElementById('scanBtn');
     const wrap   = document.getElementById('scanWrap');
     const loader = document.getElementById('scanLoader');
     const stepEl = document.getElementById('loaderStep');
     const btnText= document.getElementById('scanBtnText');
+    const urlInput = document.getElementById('urlInput');
 
-    if (!document.getElementById('urlInput').value.trim()) return;
+    if (!urlInput.value.trim()) return;
 
+    // Reset UI
     btn.classList.add('scanning');
     wrap.classList.add('scanning');
     btnText.textContent = 'Scanning…';
     loader.classList.add('active');
+    
+    // Hide old result if any
+    const oldResult = document.getElementById('resultCard');
+    const oldExplainer = document.getElementById('aiExplanationWrapper');
+    if(oldResult) oldResult.style.opacity = '0.3';
+    if(oldExplainer) oldExplainer.style.display = 'none';
 
     let i = 0;
     const interval = setInterval(() => {
       if (i < steps.length) { stepEl.textContent = steps[i++]; }
-      else { clearInterval(interval); }
-    }, 1200);
+    }, 800);
+
+    try {
+      const formData = new FormData(scanForm);
+      const res = await fetch('/url-scanner?ajax=1', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+      });
+      
+      const data = await res.json();
+      clearInterval(interval);
+      
+      if (data.error) {
+        showFlash(data.error, 'danger');
+        return;
+      }
+
+      currentScanData = data;
+      renderResult(data);
+      
+    } catch (err) {
+      clearInterval(interval);
+      showFlash("Network error occurred. Please try again.", 'danger');
+    } finally {
+      btn.classList.remove('scanning');
+      wrap.classList.remove('scanning');
+      btnText.textContent = 'Analyze URL';
+      loader.classList.remove('active');
+    }
   });
 }
 
-// Animate risk fill bar
-const riskFill = document.getElementById('riskFill');
-if (riskFill) {
-  const value = parseFloat(riskFill.dataset.risk) || 0;
-  riskFill.style.width = '0%';
-  requestAnimationFrame(() => {
-    setTimeout(() => {
-      riskFill.style.width = Math.max(0, Math.min(100, value)) + '%';
-    }, 300);
-  });
-}
+function renderResult(data) {
+  let resultArea = document.getElementById('ajaxResultArea');
+  if(!resultArea) {
+    resultArea = document.createElement('div');
+    resultArea.id = 'ajaxResultArea';
+    scanForm.parentNode.insertBefore(resultArea, scanForm.nextSibling);
+  }
 
-// Scroll to result on load
-const resultCard = document.getElementById('resultCard');
-if (resultCard) {
+  const resultType = data.xx === 1 ? 'safe' : (data.xx === 0 ? 'suspicious' : 'phishing');
+  const resultIcon = data.xx === 1 ? '✅' : (data.xx === 0 ? '⚠️' : '🚨');
+  const resultTitle = data.xx === 1 ? 'Website is SAFE' : (data.xx === 0 ? 'Website is SUSPICIOUS' : 'PHISHING DETECTED');
+  const pillClass = resultType;
+
+  resultArea.innerHTML = `
+    <div class="result-card ${resultType} fade-in" id="resultCard" style="margin-top:20px">
+      <div class="result-card-top">
+        <div class="result-status-icon">${resultIcon}</div>
+        <div class="result-verdict">
+          <div class="result-verdict-label">${resultTitle}</div>
+          <div class="result-url">${data.url}</div>
+        </div>
+        <div><span class="pill ${pillClass}">${resultType.toUpperCase()}</span></div>
+      </div>
+      <div class="result-card-body">
+        <div class="risk-score-row">
+          <span class="risk-label-text">Risk Score</span>
+          <div class="risk-track">
+            <div class="risk-fill" id="riskFill" style="width: 0%"></div>
+          </div>
+          <span class="risk-value-text">${Math.round(data.risk_score)}%</span>
+        </div>
+        <div style="margin-top:10px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.05)">
+          <p style="font-size:0.875rem;color:var(--text-secondary);line-height:1.6">${data.prediction}</p>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+          <button type="button" class="btn btn-cyan" id="explainAiBtn" onclick="runAiExplanation('${data.url}', '${data.risk_score}', '${data.prediction.replace(/'/g, "\\'")}')">
+            <i class="fa-solid fa-robot"></i> Explain with AI
+          </button>
+          <a href="/dashboard" class="btn btn-secondary">
+            <i class="fa-solid fa-chart-line"></i> View Dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+    <div id="aiExplanationWrapper" style="display:none; margin-top: 15px; padding: 20px; border-radius: var(--radius-sm); border-left: 4px solid var(--accent-cyan); background: rgba(0, 255, 198, 0.05); transition: opacity 0.3s ease;">
+      <div style="font-size: 0.95rem; font-weight: 600; margin-bottom: 15px; color: var(--accent-cyan); display: flex; align-items: center; justify-content: space-between;">
+        <span><i class="fa-solid fa-microchip" style="margin-right:8px;"></i>Forensic AI Explainer</span>
+        <span style="font-size:0.7rem; font-family:var(--font-mono); opacity:0.6;">v.2.0-STABLE</span>
+      </div>
+      <div id="aiExplanationContent" style="font-size: 0.85rem; font-family: var(--font-mono); color: var(--text-secondary); line-height: 1.6; white-space: pre-wrap;"></div>
+    </div>
+  `;
+
+  // Animate risk bar
   setTimeout(() => {
-    resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, 400);
+    const fill = document.getElementById('riskFill');
+    if(fill) fill.style.width = data.risk_score + '%';
+    
+    const card = document.getElementById('resultCard');
+    if(card) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+    // Re-apply tilt to new element
+    if(window.NexusTilt) window.NexusTilt.apply(card);
+  }, 100);
 }
+
+function showFlash(message, category) {
+  let flashList = document.querySelector('.flash-list');
+  if(!flashList) {
+    flashList = document.createElement('div');
+    flashList.className = 'flash-list fade-in';
+    document.querySelector('.page-header').after(flashList);
+  }
+  const msg = document.createElement('div');
+  msg.className = `flash-msg ${category}`;
+  msg.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${message}`;
+  flashList.appendChild(msg);
+  setTimeout(() => msg.remove(), 5000);
+}
+
+// Original Result initialization (if page was loaded with result)
+document.addEventListener('DOMContentLoaded', () => {
+  const riskFill = document.getElementById('riskFill');
+  if (riskFill) {
+    const value = parseFloat(riskFill.dataset.risk) || 0;
+    setTimeout(() => { riskFill.style.width = value + '%'; }, 300);
+  }
+});
 </script>
 <script src="{{ url_for('static', filename='js/tilt.js') }}"></script>
 <!-- NEXUS motion system -->

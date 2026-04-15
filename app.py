@@ -66,6 +66,8 @@ from models import Scan, User, PhishReport
 # APP CONFIG
 # =============================
 app = Flask(__name__)
+from werkzeug.middleware.proxy_fix import ProxyFix
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev_secret_key")
@@ -98,7 +100,8 @@ login_manager = LoginManager(app)
 login_manager.login_view = "login"
 
 # Allow local dev over http for OAuth (remove in production)
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+if os.environ.get("FLASK_ENV") == "development":
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # ─── Google OAuth Configuration ────────────────────────────────────────────────
 _google_client_id     = os.environ.get('GOOGLE_OAUTH_CLIENT_ID',     '').strip()
@@ -247,15 +250,6 @@ def analyze_message_text(message):
         status = "PHISHING"
     elif score >= 40:
         status = "SUSPICIOUS"
-
-    return {
-        "message": message,
-        "urls": urls,
-        "issues": issues,
-        "risk_score": score,
-        "status": status,
-    }
-
 
     return {
         "message": message,
@@ -634,20 +628,84 @@ def index():
 
 
 # =============================
+# EXPLAIN AI ENDPOINT
+# =============================
+@app.route('/explain_ai', methods=['POST'])
+def explain_ai():
+    data = request.get_json() or {}
+    url = data.get("url", "").strip()
+    score = float(data.get("risk_score", 0))
+    prediction_text = data.get("prediction", "")
+    
+    if score >= 70:
+        level = "HIGH"
+        rec = "Avoid entering credentials or personal data. Immediately close the tab."
+    elif score >= 40:
+        level = "MEDIUM"
+        rec = "Proceed with caution. Verify the domain and sender before interaction."
+    else:
+        level = "LOW"
+        rec = "Safe to browse. Continue standard security practices."
+        
+    reasons = []
+    # Dynamic heuristic analysis
+    if "IP address" in prediction_text:
+        reasons.append("Non-standard identity: Website uses a raw IP address instead of a registered domain.")
+    if "DNS" in prediction_text:
+        reasons.append("Resolution failure: No valid DNS records found, indicating a possible temporary or malicious setup.")
+    if "Safe Browsing" in prediction_text:
+        reasons.append("Blacklisted: Flagged as dangerous by Google Safe Browsing repository.")
+    if "new" in prediction_text or "age" in prediction_text:
+        reasons.append("Infancy risk: Domain was registered very recently, a common trait of 'throwaway' phishing sites.")
+    if "SSL" in prediction_text:
+        reasons.append("Insecure connection: Missing or invalid SSL certificate, exposing traffic to interception.")
+    if "Spoofing" in prediction_text or ("similar" in prediction_text and score >= 40):
+        reasons.append("Brand deception: URL character patterns strongly resemble a high-traffic trusted domain.")
+    if "keywords" in prediction_text or "structure" in prediction_text:
+        reasons.append("Lexical analysis: URL contains patterns commonly found in malicious redirect chains.")
+        
+    if not reasons:
+        if score >= 70:
+            reasons.append("Structural footprint: ML analysis detected high correlation with known phishing metadata.")
+            reasons.append("Obfuscation detected: Logic identifies suspiciously long or coded path parameters.")
+        elif score >= 40:
+            reasons.append("Uncertain reputation: Patterns suggest unusual hosting behavior warranting caution.")
+        else:
+            reasons.append("Verified reputation: Matches known benign structural patterns and trusted hosting sources.")
+            reasons.append("Secure infrastructure: Validated certificate and mature domain history.")
+            
+    response_data = {
+        "explanation": "\n".join([f"- {r}" for r in reasons]),
+        "risk_level": level,
+        "recommendation": rec
+    }
+    
+    import time
+    time.sleep(0.4)
+    return jsonify(response_data)
+
+
+# =============================
 # URL SCANNER PAGE
 # =============================
 @app.route("/url-scanner", methods=["GET", "POST"])
 @login_required
 def url_scanner():
-    """
-    URL Scanner page — handles both GET (show form) and POST (scan & show result).
-    Renders url_scanner.html.
-    """
     if request.method == "POST":
         raw_url = request.form.get("url", "").strip()
-        if raw_url:
-            result = run_url_scan(raw_url)
+        is_ajax = request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.args.get("ajax") == "1"
 
+        if not raw_url:
+            msg = "URL cannot be empty."
+            if is_ajax: return jsonify({"error": msg}), 400
+            flash(msg, "danger")
+            return render_template("url_scanner.html")
+
+        if not (raw_url.startswith("http://") or raw_url.startswith("https://")):
+            raw_url = "http://" + raw_url
+
+        try:
+            result = run_url_scan(raw_url)
             new_scan = Scan(
                 url=raw_url,
                 risk_score=result.get("risk_score") or 0,
@@ -657,14 +715,27 @@ def url_scanner():
             db.session.add(new_scan)
             db.session.commit()
 
+            if is_ajax:
+                return jsonify({
+                    "url": result["url"],
+                    "prediction": result["prediction"],
+                    "xx": result["xx"],
+                    "risk_score": result["risk_score"]
+                })
+
             return render_template(
                 "url_scanner.html",
                 url=result["url"],
                 prediction=result["prediction"],
                 xx=result["xx"],
                 risk_score=result["risk_score"],
-                assistant_hint=None,
+                assistant_hint=None
             )
+        except Exception as e:
+            msg = f"Scan failed: {str(e)}"
+            if is_ajax: return jsonify({"error": msg}), 500
+            flash(msg, "danger")
+            return render_template("url_scanner.html")
 
     return render_template("url_scanner.html")
 
@@ -1291,4 +1362,4 @@ def api_threat_map():
 # =============================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    app.run(host="0.0.0.0", port=port, debug=False)

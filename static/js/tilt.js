@@ -1,19 +1,17 @@
 /**
- * NEXUS — Unified 3D Card Tilt System  v3.0
+ * NEXUS — Unified 3D Card Tilt System  v4.0
  * static/js/tilt.js
  *
  * Single source of truth for ALL tilt interactions.
- * Apple-level subtle, smooth, and controlled.
+ * Apple-level subtle, smooth, and controlled via CSS variables.
  *
  * Features:
  *   - Max rotation clamped to 4 degrees
- *   - Smooth interpolation via requestAnimationFrame
- *   - Damped follow (no direct snapping)
+ *   - Smooth interpolation via CSS transitions (0.6s cubic-bezier(0.22, 1, 0.36, 1))
+ *   - No requestAnimationFrame jitter
  *   - Graceful reset on mouse leave
  *   - Subtle glare overlay
  *   - Works consistently across all pages
- *
- * NOTE: VanillaTilt CDN is NO LONGER needed.
  */
 
 (function () {
@@ -24,10 +22,8 @@
     maxTilt:       4,          // degrees — subtle, premium feel
     perspective:   1000,       // px
     scale:         1.015,      // very subtle zoom on hover
-    damping:       0.08,       // lerp factor — lower = smoother/slower follow
     glareOpacity:  0.10,       // max glare brightness
     glareSize:     60,         // % radius of glare spotlight
-    resetSpeed:    0.06,       // lerp factor for reset animation
   };
 
   /* All selectors that receive the tilt effect */
@@ -56,11 +52,6 @@
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
-  /* ─── LERP UTILITY ───────────────────────────────────────── */
-  function lerp(current, target, factor) {
-    return current + (target - current) * factor;
-  }
-
   /* ─── CLAMP ──────────────────────────────────────────────── */
   function clamp(val, min, max) {
     return Math.min(max, Math.max(min, val));
@@ -68,7 +59,6 @@
 
   /* ─── BUILD GLARE OVERLAY ────────────────────────────────── */
   function createGlare(card) {
-    // Prevent duplicates
     if (card.querySelector('.nexus-tilt-glare')) return null;
 
     const wrap = document.createElement('div');
@@ -96,7 +86,7 @@
       left:         '50%',
       top:          '0%',
       opacity:      '0',
-      transition:   'opacity 0.4s ease',
+      transition:   'opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1), left 0.2s cubic-bezier(0.22, 1, 0.36, 1), top 0.2s cubic-bezier(0.22, 1, 0.36, 1)',
     });
 
     wrap.appendChild(inner);
@@ -110,12 +100,10 @@
 
   /* ─── DESTROY EXISTING TILT INSTANCES ────────────────────── */
   function destroyExisting(card) {
-    // Remove VanillaTilt if it was initialized
     if (card.vanillaTilt) {
       try { card.vanillaTilt.destroy(); } catch(_) {}
       delete card.vanillaTilt;
     }
-    // Remove our old glare overlays
     card.querySelectorAll('.pg-tilt-glare').forEach(el => el.remove());
   }
 
@@ -123,67 +111,23 @@
    *  APPLY SMOOTH TILT TO ONE ELEMENT
    * ═══════════════════════════════════════════════════════════ */
   function applyTilt(card) {
-    // Prevent double-init
-    if (card._nexusTiltV3) return;
-    card._nexusTiltV3 = true;
+    if (card._nexusTiltV4) return;
+    card._nexusTiltV4 = true;
 
-    // Clean up any previous tilt systems
     destroyExisting(card);
 
-    // Setup card styles
     card.style.transformStyle = 'preserve-3d';
     card.style.willChange     = 'transform';
+    // Apple-level smooth motion
+    card.style.transition     = 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
+    // Base transform state using CSS variables
+    card.style.setProperty('--tilt-rx', '0deg');
+    card.style.setProperty('--tilt-ry', '0deg');
+    card.style.setProperty('--tilt-scale', '1');
+    card.style.transform = `perspective(${CFG.perspective}px) rotateX(var(--tilt-rx)) rotateY(var(--tilt-ry)) scale3d(var(--tilt-scale), var(--tilt-scale), 1)`;
 
     const glareEl = createGlare(card);
 
-    // State
-    let targetRX  = 0,  targetRY = 0;     // target rotation
-    let currentRX = 0,  currentRY = 0;    // current (interpolated) rotation
-    let isHovering = false;
-    let rafId = null;
-
-    /* ─── ANIMATION LOOP ─────────────────────────────────── */
-    function tick() {
-      const factor = isHovering ? CFG.damping : CFG.resetSpeed;
-
-      currentRX = lerp(currentRX, targetRX, factor);
-      currentRY = lerp(currentRY, targetRY, factor);
-
-      // Clamp for safety
-      currentRX = clamp(currentRX, -CFG.maxTilt, CFG.maxTilt);
-      currentRY = clamp(currentRY, -CFG.maxTilt, CFG.maxTilt);
-
-      const scale = isHovering ? CFG.scale : 1;
-
-      card.style.transform =
-        `perspective(${CFG.perspective}px) ` +
-        `rotateX(${currentRX.toFixed(3)}deg) ` +
-        `rotateY(${currentRY.toFixed(3)}deg) ` +
-        `scale3d(${scale}, ${scale}, 1)`;
-
-      // Keep animating if we haven't settled
-      const dx = Math.abs(currentRX - targetRX);
-      const dy = Math.abs(currentRY - targetRY);
-
-      if (dx > 0.01 || dy > 0.01) {
-        rafId = requestAnimationFrame(tick);
-      } else {
-        // Snap to final value
-        currentRX = targetRX;
-        currentRY = targetRY;
-
-        if (!isHovering && targetRX === 0 && targetRY === 0) {
-          card.style.transform = '';
-        }
-        rafId = null;
-      }
-    }
-
-    function startAnimation() {
-      if (!rafId) rafId = requestAnimationFrame(tick);
-    }
-
-    /* ─── EVENT HANDLERS ─────────────────────────────────── */
     function onMouseMove(e) {
       if (isMobile()) return;
 
@@ -191,11 +135,14 @@
       const dx   = (e.clientX - rect.left - rect.width  / 2) / (rect.width  / 2);
       const dy   = (e.clientY - rect.top  - rect.height / 2) / (rect.height / 2);
 
-      // Set target (clamped)
-      targetRY =  clamp(dx * CFG.maxTilt, -CFG.maxTilt, CFG.maxTilt);
-      targetRX =  clamp(dy * -CFG.maxTilt, -CFG.maxTilt, CFG.maxTilt);
+      // Strict clamping to 4 degrees as requested
+      const targetRY = clamp(dx * CFG.maxTilt, -CFG.maxTilt, CFG.maxTilt);
+      const targetRX = clamp(dy * -CFG.maxTilt, -CFG.maxTilt, CFG.maxTilt);
 
-      // Update glare position
+      card.style.setProperty('--tilt-rx', `${targetRX.toFixed(2)}deg`);
+      card.style.setProperty('--tilt-ry', `${targetRY.toFixed(2)}deg`);
+      card.style.setProperty('--tilt-scale', `${CFG.scale}`);
+
       if (glareEl) {
         const gx = ((e.clientX - rect.left) / rect.width)  * 100;
         const gy = ((e.clientY - rect.top)  / rect.height) * 100;
@@ -203,29 +150,27 @@
         glareEl.style.top     = gy + '%';
         glareEl.style.opacity = '1';
       }
-
-      startAnimation();
     }
 
     function onMouseEnter() {
       if (isMobile()) return;
-      isHovering = true;
+      // Use a slightly faster but still smooth transition on entry to prevent "snapping"
+      card.style.transition = 'transform 0.2s ease-out';
     }
 
     function onMouseLeave() {
       if (isMobile()) return;
-      isHovering = false;
-      targetRX = 0;
-      targetRY = 0;
+      // Reset with the premium smooth transition
+      card.style.transition = 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
+      card.style.setProperty('--tilt-rx', '0deg');
+      card.style.setProperty('--tilt-ry', '0deg');
+      card.style.setProperty('--tilt-scale', '1');
 
       if (glareEl) {
         glareEl.style.opacity = '0';
       }
-
-      startAnimation();
     }
 
-    /* ─── BIND EVENTS ────────────────────────────────────── */
     card.addEventListener('mousemove',  onMouseMove,  { passive: true });
     card.addEventListener('mouseenter', onMouseEnter, { passive: true });
     card.addEventListener('mouseleave', onMouseLeave, { passive: true });
@@ -239,7 +184,6 @@
     document.querySelectorAll(SELECTORS).forEach(applyTilt);
   }
 
-  /* Watch for dynamically added cards */
   function watchDom() {
     if (isMobile() || prefersReducedMotion()) return;
     const observer = new MutationObserver(mutations => {
@@ -256,9 +200,6 @@
     observer.observe(document.body, { childList: true, subtree: true });
   }
 
-  /* ═══════════════════════════════════════════════════════════
-   *  BOOT
-   * ═══════════════════════════════════════════════════════════ */
   function boot() {
     if (isMobile() || prefersReducedMotion()) return;
     initAll();
@@ -271,7 +212,6 @@
     boot();
   }
 
-  /* ─── PUBLIC API ─────────────────────────────────────────── */
   window.NexusTilt = {
     init:     boot,
     apply:    applyTilt,

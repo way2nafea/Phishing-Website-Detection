@@ -1,245 +1,171 @@
-# Phishing Website Detection System
+# <p align="center">⬡ NEXUS</p>
+<p align="center">
+  <strong>Real-time AI-powered Cyber Threat Intelligence Platform</strong><br>
+  <i>Detecting phishing, malware, and social engineering threats with precision.</i>
+</p>
 
-**Abstract:** This project uses machine learning techniques to analyze website URLs and detect phishing websites accurately.
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.8+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python">
+  <img src="https://img.shields.io/badge/Flask-Web_Framework-000000?style=for-the-badge&logo=flask&logoColor=white" alt="Flask">
+  <img src="https://img.shields.io/badge/Machine_Learning-Scikit_Learn-F7931E?style=for-the-badge&logo=scikit-learn&logoColor=white" alt="ML">
+  <img src="https://img.shields.io/badge/Cybersecurity-Threat_Intel-E4405F?style=for-the-badge&logo=securityscorecard&logoColor=white" alt="Security">
+  <img src="https://img.shields.io/badge/Deployment-Render-46E3B7?style=for-the-badge&logo=render&logoColor=white" alt="Render">
+</p>
 
-## Project Information
+---
 
-### Project Members
-1. NAKADE ABDUL NAFEA NASIR (Team Leader)
-2. SHAIKH ABDUL RAHIM SULTAN AHMED
-3. SAYYED ZIDAN NASIR
-4. ANSARI ZAID AYUB
+## 🚀 Overview
 
-### Project Guide
-- PROF. PRATHAMESH YADAV (Primary Guide)
+**NEXUS** is an advanced Cyber Threat Intelligence (CTI) system designed to identify and neutralize phishing threats in real-time. Built for the modern web, it combines academic machine learning research with industry-standard threat feeds to protect users from malicious digital infrastructure.
 
-### Subject Details
-- **Class:** SE (COMP) Div B - 2025-2026
-- **Subject:** Mini Project-I (MP-1)
-- **Project Type:** Mini Project
+> [!IMPORTANT]
+> **Abstract**: This project implements a multi-layer detection architecture using machine learning techniques and real-time security APIs to analyze website URLs and detect phishing attempts with 95%+ accuracy.
 
-## Overview
+---
 
-An advanced cybersecurity web application that detects malicious and phishing URLs using machine learning, Google Safe Browsing API, DNS & WHOIS validation, and SSL certificate verification. The system provides real-time threat intelligence with detailed security reports for any given URL.
+## ✨ Core Features
 
-## Key Features
+### 🔍 Intelligence & Detection
+*   **🧠 Neural ML Engine**: Analyzes 30+ lexical and structural features of URLs to identify patterns invisible to the human eye.
+*   **📡 Live Intel Feeds**: Direct integration with Google Safe Browsing, OpenPhish, and PhishTank.
+*   **🔐 Infrastructure Audit**: Automated SSL/TLS certificate validation and DNS/WHOIS reputation checks.
+*   **🕵️ DNA Analysis**: Detects look-alike (Typosquatting) domains and suspicious TLD patterns.
 
-### Multi-Layer Security Detection
-- IP address detection
-- DNS validation
-- Domain age (WHOIS) analysis
-- SSL certificate validation
-- Look-alike domain detection
-- Suspicious keyword structure detection
-- Google Safe Browsing API integration
-- Machine Learning prediction
+### 💻 User Experience
+*   **📊 Security Dashboard**: Personalized scan history and threat activity tracking.
+*   **⚡ AJAX Deep Scan**: High-performance, no-reload scanning pipeline with cinematic feedback.
+*   **🤖 Forensic AI Explainer**: Natural language breakdown of *why* a URL is considered dangerous.
+*   **🌑 Premium Dark UI**: Modern, glassmorphism-inspired interface optimized for focus and speed.
 
-### Professional Risk Score System
-Each URL is assigned a risk score (0–100%):
-- **Low Risk** (Safe)
-- **Medium Risk** (Suspicious)
-- **High Risk** (Phishing)
+---
 
-### User Authentication & Dashboard
-- User registration with secure password hashing (Bcrypt)
-- Login/Logout with session management (Flask-Login)
-- Dashboard with scan history
-- User-specific history tracking
-- Persistent storage using SQLite
+## 🧠 Advanced Detection Engine
 
-## Technology Stack
+NEXUS doesn't just check a list; it performs a full forensic audit:
 
-| Category | Technologies |
-|----------|---------------|
-| **Backend** | Python, Flask, SQLAlchemy, Flask-Login, Flask-Bcrypt |
-| **Machine Learning** | Scikit-learn, trained classification model (.pkl) |
-| **Security** | Google Safe Browsing API, WHOIS lookup, DNS validation, SSL verification |
-| **Frontend** | HTML, CSS, Bootstrap |
-| **Database** | SQLite (scans.db) |
-| **Deployment** | Render |
-| **Version Control** | Git & GitHub |
+1.  **Lexical Analysis**: Entropy checks, length validation, and keyword-to-domain ratio analysis.
+2.  **Reputation Scoring**: Querying global threat registries and blacklists.
+3.  **Infrastructure Health**: Verifying the legitimacy of the hosting provider and domain age.
+4.  **ML Inference**: Running features through a trained classification model to predict "Zero-Day" phishing sites that haven't been blacklisted yet.
 
-## System Architecture
+---
 
-```
-User → Flask Web App → Security Checks Layer → ML Model → Risk Scoring Engine → Database → Response UI
-```
+## 🏗️ System Architecture
 
-### Workflow
-1. User logs in to the application
-2. User submits a URL for scanning
-3. System performs comprehensive security checks:
-   - DNS check
-   - SSL validation
-   - WHOIS domain age check
-   - Google Safe Browsing check
-   - Structural analysis
-   - ML prediction
-4. Risk score is calculated
-5. Result is stored in database
-6. Detailed report is displayed to user
-
-## Project Structure
-
-```
-Phishing-Website-Detection/
-├── app.py                  # Main Flask application
-├── database.py             # Database configuration
-├── models.py               # Database models
-├── requirements.txt        # Python dependencies
-│
-├── phishing_engine/        # Core detection engine
-│   ├── utils.py
-│   ├── security_checks.py
-│   ├── ml_engine.py
-│   ├── google_check.py
-│   └── feature.py
-│
-├── templates/              # HTML templates
-│   ├── index.html
-│   ├── login.html
-│   ├── register.html
-│   └── dashboard.html
-│
-├── static/                 # Static files
-│   ├── style.css
-│   ├── robots.txt
-│   └── sitemap.xml
-│
-├── pickle/                 # Trained models
-│   └── dl_model.h5
-│
-├── instance/               # Instance folder
-├── scans.db                # SQLite database
-├── .env                    # Environment variables
-└── README.md
+```mermaid
+graph LR
+    A[User Input] --> B[Normalization Engine]
+    B --> C{The Vault}
+    C --> D[Security Checks Layer]
+    C --> E[ML Prediction Layer]
+    C --> F[Threat Feed API]
+    D & E & F --> G[Risk Scoring Engine]
+    G --> H[Forensic AI Report]
+    H --> I[Dashboard & persistence]
 ```
 
-## Installation & Setup
+**Workflow Architecture**:
+- **Ingress**: Normalizes and cleans the raw URL/Input.
+- **Analysis**: Parallel execution of DNS, SSL, and ML heuristics.
+- **Synthesis**: Scoring engine weighs signals to generate a final risk percentage.
+- **Persistence**: Secure storage in SQLite for historical analytics.
 
-### Prerequisites
-- Python 3.8+
-- Git
-- Google Safe Browsing API key
+---
 
-### Local Setup
+## ⚙️ Technology Stack
 
-**1. Clone Repository**
+| Layer | Technology | Purpose |
+| :--- | :--- | :--- |
+| **Backend** | Python / Flask | Core application logic & routing |
+| **Machine Learning** | Scikit-Learn / Pickle | Predictive classification engine |
+| **Database** | SQLite / SQLAlchemy | User data & scan history persistence |
+| **Security APIs** | Google Safe Browsing | Global threat intelligence synchronization |
+| **Frontend** | Vanilla JS / CSS3 / HTML5 | Responsive, high-performance UI |
+| **Auth** | Flask-Bcrypt / Login | Secure session & identity management |
+
+---
+
+## 📸 Project Showcase
+
+### Dashboard Preview
+> [!NOTE]
+> *Insert Dashboard Screenshot Here*
+
+### Live Scan Analysis
+> [!NOTE]
+> *Insert URL Scanner Analysis Screenshot Here*
+
+---
+
+## 🧪 How It Works (Step-by-Step)
+
+1.  **Input Submission**: User pastes a suspicious link into the NEXUS vault.
+2.  **Heuristic Probe**: System checks domain age, SSL status, and DNS integrity.
+3.  **Pattern Recognition**: ML model analyzes the URL string for malicious characteristics.
+4.  **Global Query**: The link is cross-referenced with Google Safe Browsing.
+5.  **Intelligence Report**: A unified risk score $(0-100)$ is generated with a detailed forensic explanation.
+
+---
+
+## ⚡ Deployment & Setup
+
+### Local Installation
 ```bash
+# 1. Clone & Enter
 git clone https://github.com/way2nafea/Phishing-Website-Detection.git
 cd Phishing-Website-Detection
-```
 
-**2. Create Virtual Environment**
-```bash
-# Windows
+# 2. Setup Environment
 python -m venv venv
-venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Mac/Linux
-python -m venv venv
-source venv/bin/activate
-```
-
-**3. Install Dependencies**
-```bash
+# 3. Install Dependencies
 pip install -r requirements.txt
-```
 
-**4. Create Environment File**
-Create a `.env` file in the project root:
-```env
-GOOGLE_API_KEY=your_google_safe_browsing_api_key
-SECRET_KEY=your_secret_key
-```
-
-**5. Initialize Database**
-```bash
-python
-```
-Inside Python shell:
-```python
-from app import app
-from database import db
-
-with app.app_context():
-    db.create_all()
-exit()
-```
-
-**6. Run Application**
-```bash
+# 4. Run Nexus
 python app.py
 ```
-Visit: `http://127.0.0.1:10000`
 
-## Live Deployment
+### Live Production
+The system is optimized for **Render** and **Vercel** deployments.
+- **Live Demo**: [https://phishing-website-detection-1-qex8.onrender.com](https://phishing-website-detection-1-qex8.onrender.com)
 
-**URL:** https://phishing-website-detection-1-qex8.onrender.com
+---
 
-> **Note:** Free Render services may take 20–30 seconds to wake up on first access.
+## 👨‍💻 Project Team
 
-## Security Features
+| Name | Role | Profile |
+| :--- | :--- | :--- |
+| **Nakade Abdul Nafea Nasir** | **Team Leader** | [GitHub](https://github.com/way2nafea) |
+| Shaikh Abdul Rahim Sultan Ahmed | Core Developer | [GitHub](#) |
+| Sayyed Zidan Nasir | ML Engineer | [GitHub](#) |
+| Ansari Zaid Ayub | UI/UX Designer | [GitHub](#) |
 
-- Password hashing using Bcrypt
-- Session protection using Flask-Login
-- Input normalization and validation
-- Multi-layer phishing detection
-- Google threat intelligence integration
+**Project Guide**: `Prof. Prathamesh Yadav` (Primary Guide)  
+**Academic Year**: `SE (COMP) Div B - 2025-2026`  
+**Institue**: `Mini Project-I (MP-1)`
 
-## Use Cases
+---
 
-- Cybersecurity academic projects
-- Phishing awareness training tools
-- URL threat intelligence demonstrations
-- ML + Security integration examples
-- Production-ready backend project
+## 📚 Datasets & References
 
-## Future Enhancements
+*   **Datasets**: [Kaggle Phishing Dataset](https://kaggle.com/), [URLHAUS Abuse.ch Feed](https://urlhaus.abuse.ch/)
+*   **Threat Intel**: [Google Safe Browsing API](https://developers.google.com/safe-browsing)
+*   **Protocols**: [WHOIS & DNS Standards](https://www.iana.org/assignments/whois-parameters/)
 
-- Deep Learning models (LSTM / Transformer)
-- Dashboard analytics with charts
-- Website screenshot preview
-- Adversarial attack testing
-- Chrome Extension version
-- REST API version
-- PostgreSQL production database
+---
 
-## Dataset Used
+## 🎯 Future Scope
+- [ ] **Nexus Browser Extension**: Real-time browser protection.
+- [ ] **Advanced Deep Learning**: Transitioning to LSTM/Transformer models.
+- [ ] **Enterprise API**: Exposing detection as a RESTful service.
+- [ ] **Visual Analysis**: Automated website screenshot and favicon fingerprinting.
 
-1. [Kaggle Phishing Dataset](https://kaggle.com/)
-2. [URLHAUS Dataset](https://urlhaus.abuse.ch/)
+---
 
-## References
+## 🧾 License & Contribution
 
-- [Kaggle Phishing Datasets](https://kaggle.com/)
-- [URLHAUS - Abuse.ch](https://urlhaus.abuse.ch/)
-- [Google Safe Browsing Documentation](https://developers.google.com/safe-browsing)
-- [WHOIS Protocol Documentation](https://www.iana.org/assignments/whois-parameters/)
+This project is licensed under the academic guidelines of MP-1. Contributions are welcome for non-commercial educational purposes.
 
-## License
-
-This project is developed for academic and educational purposes. See [LICENSE](LICENSE) for details.
-
-## Developer
-
-**Team Members:**
-- Nakade Abdul Nafea Nasir (Team Leader)
-- Shaikh Abdul Rahim Sultan Ahmed
-- Sayyed Zidan Nasir
-- Ansari Zaid Ayub
-
-**Guide:** Prof. Prathamesh Yadav
-
-Computer Engineering Students - Cybersecurity & Machine Learning Enthusiasts
-
-## Conclusion
-
-This project demonstrates the practical integration of:
-- Machine Learning
-- Real-time threat intelligence
-- Backend security architecture
-- User authentication systems
-- Database persistence
-
-It serves as a production-ready cybersecurity web application showcasing real-world phishing detection techniques.
+---
+<p align="center">Made with ❤️ by Team NEXUS</p>

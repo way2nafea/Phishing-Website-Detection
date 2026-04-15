@@ -28,7 +28,7 @@ def check_google_safe_browsing(url):
         }
     }
 
-    response = requests.post(endpoint, json=body)
+    response = requests.post(endpoint, json=body, timeout=5)
 
     if response.status_code == 200:
         result = response.json()

@@ -450,9 +450,13 @@
                   {% endif %}
                 </ul>
               </div>
-              <a class="btn btn-primary" id="deepScanBtn" href="{{ url_for('url_scanner') }}?url={{ suggestion.raw_url|urlencode }}">
+              <button type="button" class="btn btn-primary" id="deepScanBtn" onclick="runDeepScan('{{ suggestion.raw_url|escape }}')">
                 <i class="fa-solid fa-shield-halved"></i> Run Full Deep Scan
-              </a>
+              </button>
+              <div id="deepScanResultWrapper" style="display:none; margin-top: 15px; padding: 15px; border-radius: var(--radius-sm); border-left: 3px solid; background: rgba(255,255,255,0.02)">
+                <div style="font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;" id="deepScanVerdict"></div>
+                <div style="font-size: 0.8rem; font-family: var(--font-mono); color: var(--text-secondary);" id="deepScanDetails"></div>
+              </div>
             </div>
           {% endif %}
         </div>
@@ -798,6 +802,65 @@ function updateTimestamps(meta) {
 function rebuildPhishingTable(items) {
   const tbody = document.getElementById('phishingTbody');
   if (!tbody || !items) return;
+  
+  // Implementation of deep scan overlay logic to avert page refresh
+  window.runDeepScan = async function(url) {
+    const btn = document.getElementById('deepScanBtn');
+    const resultWrapper = document.getElementById('deepScanResultWrapper');
+    const verdict = document.getElementById('deepScanVerdict');
+    const details = document.getElementById('deepScanDetails');
+    
+    if (!btn) return;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin-ring" style="width:14px;height:14px;border-width:2px;margin-right:6px;"></span> Scanning...';
+    resultWrapper.style.display = 'none';
+    
+    try {
+      const response = await fetch('/scan-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ url: url })
+      });
+      
+      const data = await response.json();
+      
+      if (data.error) {
+         verdict.textContent = '❌ Error';
+         details.textContent = data.error;
+         resultWrapper.style.borderLeftColor = 'var(--danger)';
+      } else {
+         const score = data.risk_score || 0;
+         if (score >= 70) {
+           resultWrapper.style.borderLeftColor = 'var(--danger)';
+           verdict.textContent = '🚨 High Risk (' + score.toFixed(1) + '%)';
+           verdict.style.color = 'var(--danger)';
+         } else if (score >= 40) {
+           resultWrapper.style.borderLeftColor = 'var(--warning)';
+           verdict.textContent = '⚠️ Suspicious (' + score.toFixed(1) + '%)';
+           verdict.style.color = 'var(--warning)';
+         } else {
+           resultWrapper.style.borderLeftColor = 'var(--success)';
+           verdict.textContent = '✅ Safe (' + score.toFixed(1) + '%)';
+           verdict.style.color = 'var(--success)';
+         }
+         details.textContent = data.prediction || 'Detailed analysis complete.';
+      }
+      
+      resultWrapper.style.display = 'block';
+    } catch (e) {
+      console.error(e);
+      verdict.textContent = '❌ Error';
+      details.textContent = 'Could not reach scanning server. Please try again later.';
+      resultWrapper.style.borderLeftColor = 'var(--danger)';
+      resultWrapper.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Run Full Deep Scan';
+    }
+  };
   tbody.innerHTML = items.map(item => {
     const srcPill = item.source === 'OpenPhish'
       ? `<span class="pill" style="background:rgba(16,185,129,.1);color:#34d399;font-size:.68rem">OpenPhish</span>`
