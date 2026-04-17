@@ -193,9 +193,9 @@ dl_model = None
 
 if os.path.exists(DL_MODEL_PATH):
     dl_model = load_model(DL_MODEL_PATH)
-    print("✅ DL Model Loaded Successfully")
+    print("[SUCCESS] DL Model Loaded Successfully")
 else:
-    print("⚠ DL Model not found")
+    print("[WARNING] DL Model not found")
 
 
 # =============================
